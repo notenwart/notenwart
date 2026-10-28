@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT kind, in_app, email, push FROM notification_settings WHERE user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "notification_settings",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "in_app",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "notification_settings",
+            "name": "in_app"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "notification_settings",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "push",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "notification_settings",
+            "name": "push"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0be6ae4131453bd59788d8d4c45e33c73bc605993b8a7fa40dce30eb6e21c92e"
+}

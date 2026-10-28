@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT leader FROM ensemble_members WHERE ensemble_id = $1 AND user_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "leader",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "ensemble_members",
+            "name": "leader"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8e132e1c96421c74d31a4f4d2af125788de512ac9b2b2c685367b90c11579861"
+}

@@ -1,0 +1,113 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT e.id, e.name, e.description, '/api/images/' || e.logo_id AS logo_url, e.symbol, e.color,\n                  (SELECT count(*) FROM ensemble_members m WHERE m.ensemble_id = e.id) AS \"member_count!\",\n                  (SELECT count(*) FROM ensemble_works w WHERE w.ensemble_id = e.id) AS \"work_count!\",\n                  coalesce((SELECT leader FROM ensemble_members m WHERE m.ensemble_id = e.id AND m.user_id = $2),\n                           false) AS \"leader!\",\n                  EXISTS (SELECT 1 FROM ensemble_members m WHERE m.ensemble_id = e.id AND m.user_id = $2)\n                      AS \"member!\"\n           FROM ensembles e\n           WHERE e.organization_id = $1 AND ($3::uuid IS NULL OR e.id = $3)\n           ORDER BY lower(e.name)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "ensembles",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "ensembles",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "ensembles",
+            "name": "description"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "logo_url",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "symbol",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "ensembles",
+            "name": "symbol"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "color",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "ensembles",
+            "name": "color"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "member_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "work_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "leader!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "member!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      null,
+      true,
+      true,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "9d1e59df02f53201a6eae7f99999dff7c0957421c6b5d3e558e9e06ac2e610fa"
+}

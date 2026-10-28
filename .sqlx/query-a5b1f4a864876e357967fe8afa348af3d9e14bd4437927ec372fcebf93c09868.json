@@ -1,0 +1,150 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT u.id, u.display_name, u.email, m.role AS \"role: Role\", u.password_hash IS NOT NULL AS \"has_password!\",\n                  o.id AS organization_id, o.name AS organization_name, u.avatar_id, o.logo_id, o.profile_pictures,\n                  s.last_seen_at < now() - interval '1 hour' AS \"stale!\"\n           FROM sessions s\n           JOIN users u ON u.id = s.user_id\n           JOIN memberships m ON m.user_id = s.user_id AND m.organization_id = s.organization_id\n           JOIN organizations o ON o.id = s.organization_id\n           WHERE s.token_hash = $1 AND s.expires_at > now()",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "display_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "role: Role",
+        "type_info": {
+          "Custom": {
+            "name": "organization_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "librarian",
+                "leader",
+                "member"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "has_password!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "organization_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "organization_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "avatar_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "avatar_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "logo_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "logo_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "profile_pictures",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "profile_pictures"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "stale!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      true,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "a5b1f4a864876e357967fe8afa348af3d9e14bd4437927ec372fcebf93c09868"
+}

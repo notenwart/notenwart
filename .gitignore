@@ -1,0 +1,6 @@
+/target
+/_to_delete
+.env
+.DS_Store
+/deploy/.env
+/data

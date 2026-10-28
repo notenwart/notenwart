@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT w.title, p.label, a.pages, a.updated_at FROM annotations a\n         JOIN parts p ON p.id = a.part_id JOIN works w ON w.id = p.work_id\n         WHERE a.user_id = $1 AND w.organization_id = $2 ORDER BY w.title",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "label",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "pages",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "annotations",
+            "name": "pages"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "annotations",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6302f852c706f7c5ce887522bcf1282d954eaab49b9b109e89884df973f011c6"
+}

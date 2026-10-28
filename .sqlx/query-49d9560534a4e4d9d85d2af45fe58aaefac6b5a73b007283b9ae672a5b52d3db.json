@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pages FROM annotations WHERE user_id = $1 AND part_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pages",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "annotations",
+            "name": "pages"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "49d9560534a4e4d9d85d2af45fe58aaefac6b5a73b007283b9ae672a5b52d3db"
+}

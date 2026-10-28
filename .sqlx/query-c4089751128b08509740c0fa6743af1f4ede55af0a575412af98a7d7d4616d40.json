@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO part_grants (ensemble_id, user_id, part_id, granted_by) VALUES ($1, $2, $3, $4)\n         ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c4089751128b08509740c0fa6743af1f4ede55af0a575412af98a7d7d4616d40"
+}

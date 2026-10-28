@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, work_id, file_name, size, sha256, page_count, created_at\n           FROM source_files WHERE work_id = $1 ORDER BY created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "source_files",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "work_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "source_files",
+            "name": "work_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "file_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "source_files",
+            "name": "file_name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "size",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "source_files",
+            "name": "size"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "sha256",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "source_files",
+            "name": "sha256"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "page_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "source_files",
+            "name": "page_count"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "source_files",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d52f5b7e83d21b203cb5dd4ea0d3baf322447fbab209461b22f0e633594956d5"
+}

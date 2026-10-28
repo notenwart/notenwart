@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.work_id FROM parts p JOIN works w ON w.id = p.work_id WHERE p.id = $1 AND w.organization_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "work_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "work_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0a42891f492abaa89e7123d9160da7bf33da98724d2a74a3a436c004972181b5"
+}

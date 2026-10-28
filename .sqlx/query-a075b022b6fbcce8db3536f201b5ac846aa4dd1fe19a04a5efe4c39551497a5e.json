@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT g.id, g.organization_id, g.name, e.name AS ensemble, to_char(g.expires_on, 'YYYY-MM-DD') AS \"expires_on!\",\n                  g.part_ids\n           FROM guest_links g JOIN ensembles e ON e.id = g.ensemble_id\n           WHERE g.token_hash = $1 AND g.revoked_at IS NULL AND g.expires_on >= current_date",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "guest_links",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "guest_links",
+            "name": "organization_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "guest_links",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "ensemble",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "ensembles",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "expires_on!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "part_ids",
+        "type_info": "UuidArray",
+        "origin": {
+          "Table": {
+            "table": "guest_links",
+            "name": "part_ids"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "a075b022b6fbcce8db3536f201b5ac846aa4dd1fe19a04a5efe4c39551497a5e"
+}

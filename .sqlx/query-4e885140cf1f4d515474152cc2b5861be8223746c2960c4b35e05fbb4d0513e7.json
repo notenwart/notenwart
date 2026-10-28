@@ -1,0 +1,51 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT (SELECT count(*) FROM ensemble_members WHERE user_id = $1) AS \"ensembles!\",\n                      (SELECT count(*) FROM annotations WHERE user_id = $1) AS \"annotations!\",\n                      (SELECT count(*) FROM part_grants WHERE user_id = $1) AS \"single_parts!\",\n                      (SELECT count(*) FROM loans WHERE borrower_id = $1) AS \"loans!\",\n                      (SELECT count(*) FROM sessions WHERE user_id = $1) AS \"sessions!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ensembles!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "annotations!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "single_parts!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "loans!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "sessions!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "4e885140cf1f4d515474152cc2b5861be8223746c2960c4b35e05fbb4d0513e7"
+}

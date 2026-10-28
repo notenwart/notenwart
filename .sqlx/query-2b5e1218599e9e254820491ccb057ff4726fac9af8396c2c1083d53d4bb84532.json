@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE organizations SET setup_done = CASE WHEN $3 THEN array_append(array_remove(setup_done, $2), $2)\n                                                  ELSE array_remove(setup_done, $2) END\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2b5e1218599e9e254820491ccb057ff4726fac9af8396c2c1083d53d4bb84532"
+}

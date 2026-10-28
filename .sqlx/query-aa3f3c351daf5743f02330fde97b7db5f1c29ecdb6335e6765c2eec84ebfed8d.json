@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE instruments SET name = $3, family_id = $4, transposition = $5, aliases = $6, sort = coalesce($7, sort)\n         WHERE id = $1 AND organization_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Text",
+        "TextArray",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "aa3f3c351daf5743f02330fde97b7db5f1c29ecdb6335e6765c2eec84ebfed8d"
+}

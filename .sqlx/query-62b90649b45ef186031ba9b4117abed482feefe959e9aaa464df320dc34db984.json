@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT page_count FROM source_files WHERE id = $1 AND work_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "page_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "source_files",
+            "name": "page_count"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "62b90649b45ef186031ba9b4117abed482feefe959e9aaa464df320dc34db984"
+}

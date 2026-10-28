@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM program_works pw USING programs p\n         WHERE pw.program_id = p.id AND p.ensemble_id = $1 AND pw.work_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5a7e68d71e13c87fd3bd7c27e88e22846c0de6081e4c435f7e1dcfe40d231b6a"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM ensemble_member_parts a USING ensemble_member_parts b\n         WHERE a.instrument_id = $1 AND b.instrument_id = $2 AND a.ensemble_id = b.ensemble_id\n           AND a.user_id = b.user_id AND coalesce(a.voice, 0) = coalesce(b.voice, 0)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8078a99a9d3bba9b05ecf74aa69eda623494542a400b5998abae615182ef503c"
+}

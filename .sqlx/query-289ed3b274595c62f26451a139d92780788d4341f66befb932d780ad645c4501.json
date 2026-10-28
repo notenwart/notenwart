@@ -1,0 +1,92 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT e.id, e.name, coalesce(m.leader, false) AS \"leader!\", m.user_id IS NOT NULL AS \"member!\",\n                  s.pages AS \"pages?\", s.updated_at AS \"updated_at?\", u.display_name AS \"updated_by?\"\n           FROM parts p\n           JOIN ensemble_works ew ON ew.work_id = p.work_id\n           JOIN ensembles e ON e.id = ew.ensemble_id\n           LEFT JOIN ensemble_members m ON m.ensemble_id = e.id AND m.user_id = $2\n           LEFT JOIN shared_annotations s ON s.ensemble_id = e.id AND s.part_id = p.id\n           LEFT JOIN users u ON u.id = s.updated_by\n           WHERE p.id = $1 AND e.organization_id = $3\n           ORDER BY lower(e.name)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "ensembles",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "ensembles",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "leader!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "member!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "pages?",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "shared_annotations",
+            "name": "pages"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at?",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "shared_annotations",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_by?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "display_name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "289ed3b274595c62f26451a139d92780788d4341f66befb932d780ad645c4501"
+}

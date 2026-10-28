@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Only the services for local development; the server runs with `cargo run`, the web app with `pnpm dev`.
+#   docker compose -f deploy/compose.dev.yaml up -d
+# The fixed secrets below are for development only; both services listen on 127.0.0.1.
+
+x-s3: &s3
+  S3_BUCKET: notenwart
+  S3_ACCESS_KEY_ID: GKde0000000000000000000000
+  S3_SECRET_ACCESS_KEY: de00000000000000000000000000000000000000000000000000000000000000
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: notenwart
+      POSTGRES_PASSWORD: notenwart
+      POSTGRES_DB: notenwart
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - db-dev:/var/lib/postgresql/data
+
+  garage:
+    image: dxflrs/garage:v2.1.0
+    environment:
+      GARAGE_RPC_SECRET: 00000000000000000000000000000000000000000000000000000000000000de
+      GARAGE_ADMIN_TOKEN: dev
+    ports:
+      - "127.0.0.1:3900:3900"
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage-dev:/var/lib/garage
+
+  garage-init:
+    image: python:3.13-alpine
+    command: ["python3", "-I", "/init.py"]
+    environment:
+      <<: *s3
+      GARAGE_ADMIN_URL: http://garage:3903
+      GARAGE_ADMIN_TOKEN: dev
+    volumes:
+      - ./garage/init.py:/init.py:ro
+    depends_on:
+      - garage
+
+volumes:
+  db-dev:
+  garage-dev:

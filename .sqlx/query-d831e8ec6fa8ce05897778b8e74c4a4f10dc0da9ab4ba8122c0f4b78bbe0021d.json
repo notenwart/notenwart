@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT file_name FROM source_files WHERE work_id = $1 AND sha256 = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "file_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "source_files",
+            "name": "file_name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d831e8ec6fa8ce05897778b8e74c4a4f10dc0da9ab4ba8122c0f4b78bbe0021d"
+}

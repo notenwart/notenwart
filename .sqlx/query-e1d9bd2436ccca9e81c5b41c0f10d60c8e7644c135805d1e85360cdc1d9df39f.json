@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ensemble_id FROM guest_links WHERE id = $1 AND organization_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ensemble_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "guest_links",
+            "name": "ensemble_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e1d9bd2436ccca9e81c5b41c0f10d60c8e7644c135805d1e85360cdc1d9df39f"
+}

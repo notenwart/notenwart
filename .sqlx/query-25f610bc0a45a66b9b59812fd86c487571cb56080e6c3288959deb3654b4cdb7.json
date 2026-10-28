@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE memberships SET role = $3 WHERE user_id = $1 AND organization_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "organization_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "librarian",
+                "leader",
+                "member"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "25f610bc0a45a66b9b59812fd86c487571cb56080e6c3288959deb3654b4cdb7"
+}

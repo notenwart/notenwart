@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO loans (organization_id, work_id, item, quantity, borrower_id, borrower_name, lent_on, due_on,\n                            returned_on, note)\n         VALUES ($1, $2, $3, $4, $5, $6, coalesce($7::text::date, current_date), $8::text::date, $9::text::date, $10)\n         RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "loans",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Int4",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e4b99ce0d5dd7c1ae318cc4333d85c358240ec351adc445fa184c6eaf80e06dc"
+}

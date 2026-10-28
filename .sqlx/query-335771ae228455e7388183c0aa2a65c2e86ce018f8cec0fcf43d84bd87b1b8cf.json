@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE loans SET borrower_name = '–', note = NULL WHERE borrower_id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "335771ae228455e7388183c0aa2a65c2e86ce018f8cec0fcf43d84bd87b1b8cf"
+}

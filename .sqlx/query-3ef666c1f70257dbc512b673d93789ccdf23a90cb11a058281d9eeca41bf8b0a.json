@@ -1,0 +1,107 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT v.ensemble_id AS \"ensemble_id!\", w.id AS work_id, w.title, w.composer, p.id AS part_id, p.label,\n                  cardinality(p.pages) AS \"page_count!\", p.updated_at\n           FROM visible_parts v\n           JOIN parts p ON p.id = v.part_id\n           JOIN works w ON w.id = p.work_id\n           LEFT JOIN instruments i ON i.id = p.instrument_id\n           WHERE v.user_id = $1\n           ORDER BY lower(w.title), w.id, i.sort NULLS FIRST, p.voice NULLS FIRST, lower(p.label)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ensemble_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "visible_parts",
+            "name": "ensemble_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "work_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "composer",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "composer"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "part_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "label",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "page_count!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "3ef666c1f70257dbc512b673d93789ccdf23a90cb11a058281d9eeca41bf8b0a"
+}

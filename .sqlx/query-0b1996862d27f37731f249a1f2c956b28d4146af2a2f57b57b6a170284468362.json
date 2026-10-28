@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO ensemble_members (ensemble_id, user_id) SELECT $1, u FROM unnest($2::uuid[]) AS u\n                 ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0b1996862d27f37731f249a1f2c956b28d4146af2a2f57b57b6a170284468362"
+}

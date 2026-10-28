@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# notenwart.dev – the documentation, built by GitHub Pages from this folder (Jekyll, Just the Docs): the user guide
+# in English and German, running a server, the API, contributing, design and changelog.
+title: notenwart
+description: Documentation – a self-hosted sheet music library for music schools, orchestras and ensembles
+url: https://notenwart.dev
+lang: en
+
+remote_theme: just-the-docs/just-the-docs@v0.10.0
+plugins:
+  - jekyll-remote-theme
+
+color_scheme: notenwart
+favicon_ico: /assets/favicon.ico
+search_enabled: true
+heading_anchors: true
+back_to_top: true
+back_to_top_text: Back to top
+
+aux_links:
+  GitHub: https://github.com/notenwart/notenwart
+  notenwart.app: https://notenwart.app
+aux_links_new_tab: true
+
+gh_edit_link: true
+gh_edit_link_text: Edit this page on GitHub
+gh_edit_repository: https://github.com/notenwart/notenwart
+gh_edit_branch: main
+gh_edit_source: docs
+gh_edit_view_mode: edit
+
+footer_content: "notenwart is free software under AGPL-3.0-or-later – a falkOSS project."
+
+# Every page uses the theme's layout (GitHub Pages would default to it as well; a local build does not)
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default

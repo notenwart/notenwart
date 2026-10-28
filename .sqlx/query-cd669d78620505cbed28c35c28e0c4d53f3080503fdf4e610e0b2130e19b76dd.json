@@ -1,0 +1,209 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, title, composer, arranger, publisher, lyricist, society_number, archive_location, instrumentation, difficulty, duration_seconds,\n                  source, notes, tags, created_at, updated_at\n           FROM works WHERE id = $1 AND organization_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "composer",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "composer"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "arranger",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "arranger"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "publisher",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "publisher"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "lyricist",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "lyricist"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "society_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "society_number"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "archive_location",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "archive_location"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "instrumentation",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "instrumentation"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "difficulty",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "difficulty"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "duration_seconds",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "duration_seconds"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "source",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "notes",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "notes"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "tags",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "tags"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "cd669d78620505cbed28c35c28e0c4d53f3080503fdf4e610e0b2130e19b76dd"
+}

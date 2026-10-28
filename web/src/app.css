@@ -1,0 +1,274 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Global look: brand tokens (brand/README.md), light and dark, and the base controls. */
+
+:root {
+	color-scheme: light;
+	font-family: system-ui, sans-serif;
+	--bg: #fbf8f2;
+	--surface: #f2ece0;
+	--raised: #ffffff;
+	--text: #1d2b45;
+	--muted: #5d6679;
+	--line: #ddd5c6;
+	--line-strong: #c4b9a5;
+	--link: #8a6420;
+	--accent: #1d2b45;
+	--accent-hover: #2b3d61;
+	--accent-text: #f5efe3;
+	--brass: #b8862e;
+	--danger: #b3261e;
+	--danger-bg: #fbe9e7;
+	--success: #2e7d32;
+	--selected: #f3e4c3;
+	--hover: rgb(29 43 69 / 0.06);
+	--focus: #b8862e;
+	--shadow: 0 6px 24px rgb(29 43 69 / 0.16), 0 1px 3px rgb(29 43 69 / 0.12);
+	--radius: 8px;
+	--serif: Charter, 'Bitstream Charter', 'Iowan Old Style', Georgia, serif;
+}
+
+/* Dark: when the device is dark and nobody chose light, or when dark was chosen. */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		color-scheme: dark;
+		--bg: #121a2b;
+		--surface: #1d2b45;
+		--raised: #22314f;
+		--text: #f5efe3;
+		--muted: #a9b1c2;
+		--line: #2e3d5c;
+		--line-strong: #445676;
+		--link: #d9a441;
+		--accent: #d9a441;
+		--accent-hover: #e6b65a;
+		--accent-text: #121a2b;
+		--brass: #d9a441;
+		--danger: #ff8a80;
+		--danger-bg: #3b2224;
+		--success: #81c784;
+		--selected: #3a3424;
+		--hover: rgb(245 239 227 / 0.07);
+		--focus: #d9a441;
+		--shadow: 0 6px 24px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.4);
+	}
+}
+:root[data-theme='dark'] {
+	color-scheme: dark;
+	--bg: #121a2b;
+	--surface: #1d2b45;
+	--raised: #22314f;
+	--text: #f5efe3;
+	--muted: #a9b1c2;
+	--line: #2e3d5c;
+	--line-strong: #445676;
+	--link: #d9a441;
+	--accent: #d9a441;
+	--accent-hover: #e6b65a;
+	--accent-text: #121a2b;
+	--brass: #d9a441;
+	--danger: #ff8a80;
+	--danger-bg: #3b2224;
+	--success: #81c784;
+	--selected: #3a3424;
+	--hover: rgb(245 239 227 / 0.07);
+	--focus: #d9a441;
+	--shadow: 0 6px 24px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.4);
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+}
+a {
+	color: var(--link);
+	text-underline-offset: 0.15em;
+}
+a:hover {
+	text-decoration-thickness: 2px;
+}
+h1,
+h2,
+h3 {
+	font-family: var(--serif);
+	font-weight: 600;
+}
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+input,
+select,
+textarea {
+	background: var(--bg);
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	padding: 0.45rem 0.6rem;
+	min-width: 0;
+}
+input:hover,
+select:hover,
+textarea:hover {
+	border-color: var(--line-strong);
+}
+input[type='checkbox'],
+input[type='radio'],
+progress {
+	accent-color: var(--brass);
+}
+
+/* Everything that reacts to a click shows it. */
+button,
+select,
+summary,
+label:has(> input[type='checkbox']),
+label:has(> input[type='radio']),
+label:has(> input[type='file']),
+input[type='checkbox'],
+input[type='radio'],
+input[type='date'],
+[role='button'],
+[role='option'],
+[role='tab'] {
+	cursor: pointer;
+}
+button:disabled,
+input:disabled,
+select:disabled {
+	cursor: not-allowed;
+}
+
+button,
+.button {
+	border: 1px solid var(--line);
+	background: var(--surface);
+	border-radius: 6px;
+	padding: 0.45rem 0.9rem;
+	transition:
+		background-color 0.12s,
+		border-color 0.12s,
+		box-shadow 0.12s;
+}
+/* Links and file pickers that look like buttons. */
+.button {
+	display: inline-block;
+	color: var(--text);
+	text-decoration: none;
+	cursor: pointer;
+}
+button:hover:not(:disabled),
+.button:hover {
+	border-color: var(--line-strong);
+	background: color-mix(in srgb, var(--surface), var(--text) 6%);
+}
+button:active:not(:disabled) {
+	transform: translateY(1px);
+}
+button.primary,
+.button.primary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--accent-text);
+}
+button.primary:hover:not(:disabled),
+.button.primary:hover {
+	background: var(--accent-hover);
+	border-color: var(--accent-hover);
+}
+button.danger {
+	color: var(--danger);
+}
+button.danger:hover:not(:disabled) {
+	background: var(--danger-bg);
+	border-color: var(--danger);
+}
+button.link {
+	background: none;
+	border: none;
+	padding: 0;
+	color: var(--link);
+	text-decoration: underline;
+	text-decoration-color: transparent;
+	text-underline-offset: 0.15em;
+}
+button.link:hover:not(:disabled) {
+	background: none;
+	text-decoration-color: currentColor;
+}
+button.link.danger:hover:not(:disabled) {
+	background: none;
+}
+button.icon {
+	padding: 0.35rem 0.5rem;
+	line-height: 1;
+}
+button:disabled {
+	opacity: 0.5;
+}
+
+/* Keyboard focus is always visible; mouse clicks stay quiet. */
+:focus-visible {
+	outline: 2px solid var(--focus);
+	outline-offset: 2px;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+	outline-offset: 0;
+	border-color: var(--focus);
+}
+
+.error {
+	color: var(--danger);
+}
+.muted {
+	color: var(--muted);
+}
+.narrow {
+	max-width: 26rem;
+}
+.stack {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+.stack label {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	font-size: 0.85em;
+	color: var(--muted);
+}
+.stack label > * {
+	color: var(--text);
+	font-size: 1rem;
+}
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+/* Printing (running orders, set lists): only the page's content, black on white. */
+@media print {
+	:root {
+		--bg: #fff;
+		--text: #000;
+		--muted: #444;
+		--line: #bbb;
+	}
+	header.site,
+	.no-print {
+		display: none !important;
+	}
+	main {
+		max-width: none;
+		padding: 0;
+	}
+}

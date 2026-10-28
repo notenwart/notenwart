@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE parts SET source_id = $2, label = $3, instrument_id = $4, voice = $5, pages = $6, updated_at = now()\n           WHERE id = $1\n           RETURNING id, work_id, source_id, label, instrument_id, voice, pages,\n                     cardinality(pages) AS \"page_count!\", created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "work_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "work_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "source_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "source_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "label",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "instrument_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "instrument_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "voice",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "voice"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "pages",
+        "type_info": "Int4Array",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "pages"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "page_count!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Int2",
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "614f4f7f49a27105d2b10ef5e59a2a57cd5b173ea52d43c84f11d6308661fc48"
+}

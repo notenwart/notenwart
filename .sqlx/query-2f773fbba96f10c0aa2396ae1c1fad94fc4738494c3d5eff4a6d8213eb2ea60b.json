@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO program_breaks (program_id, position, label, duration_seconds, note)\n         SELECT $1, p, l, d, n FROM unnest($2::int[], $3::text[], $4::int[], $5::text[]) AS t(p, l, d, n)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4Array",
+        "TextArray",
+        "Int4Array",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2f773fbba96f10c0aa2396ae1c1fad94fc4738494c3d5eff4a6d8213eb2ea60b"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE ensemble_members SET leader = false WHERE user_id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "33ddf42af1e97bbef7075ec45fe4148d81d28454e166821eab31a04eb1600b20"
+}

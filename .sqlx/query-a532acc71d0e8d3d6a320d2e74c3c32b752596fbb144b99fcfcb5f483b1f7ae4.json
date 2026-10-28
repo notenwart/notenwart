@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM ensemble_members WHERE ensemble_id = $1 AND user_id = ANY($2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a532acc71d0e8d3d6a320d2e74c3c32b752596fbb144b99fcfcb5f483b1f7ae4"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE recordings SET instrument_id = $2 WHERE instrument_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ea3c77850b3c9bd861895371df713cffe51c8ce114df2db1c268f186b7a54dea"
+}

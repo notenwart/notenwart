@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cardinality(p.pages) AS \"n!\" FROM parts p JOIN works w ON w.id = p.work_id\n           WHERE p.id = $1 AND w.organization_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "5a2c287bf0f1315c755bae7811a53a1dfdb8a7e34f0d79240bc6be61022d8ec2"
+}

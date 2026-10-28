@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO shared_annotations (ensemble_id, part_id, pages, updated_by) VALUES ($1, $2, $3, $4)\n           ON CONFLICT (ensemble_id, part_id)\n           DO UPDATE SET pages = excluded.pages, updated_by = excluded.updated_by, updated_at = now()\n           RETURNING updated_at, notified_at IS NULL OR notified_at < now() - interval '30 minutes' AS \"notify!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "shared_annotations",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "notify!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "77cca0ece51b35dcbc675af88ac564058e5649cd03c6430dfc36eb13c070d719"
+}

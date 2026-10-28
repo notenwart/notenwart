@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\" FROM parts p JOIN ensemble_works ew ON ew.work_id = p.work_id\n           WHERE ew.ensemble_id = $1 AND p.id = ANY($2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b4eda161a9669c18a96d2a4671463f084e3afe79e3f051c0236dbb35900e4ead"
+}

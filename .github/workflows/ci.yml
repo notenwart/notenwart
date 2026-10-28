@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Checks on every push and pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web app – lint, check, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: corepack enable
+      - name: Install
+        run: pnpm --dir web install --frozen-lockfile
+      - name: API types match api/openapi.yaml
+        run: pnpm --dir web api:types && git diff --exit-code web/src/lib/api/schema.d.ts
+      - run: pnpm --dir web lint
+      - run: pnpm --dir web check
+      - run: pnpm --dir web test
+      - run: pnpm --dir web build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: web/build
+
+  server:
+    name: Server – fmt, clippy, test
+    needs: web
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: notenwart
+          POSTGRES_PASSWORD: notenwart
+          POSTGRES_DB: notenwart
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U notenwart" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://notenwart:notenwart@127.0.0.1:5432/notenwart
+      # Compile against the committed .sqlx query data; the tests then run against the live database.
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: web/build
+      - name: Tools for reading sheet music (pdftotext, pdftoppm, tesseract)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng
+      - run: rustup component add rustfmt clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --locked -- -D warnings
+      - run: cargo test --locked
+      - name: Migrations apply
+        run: cargo run --locked -- migrate

@@ -1,0 +1,107 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT i.id, i.name, f.id AS family_id, f.name AS family, i.transposition, i.aliases, i.sort,\n                  (SELECT count(*) FROM parts p WHERE p.instrument_id = i.id)\n                  + (SELECT count(*) FROM ensemble_member_parts m WHERE m.instrument_id = i.id) AS \"usage!\"\n           FROM instruments i JOIN instrument_families f ON f.id = i.family_id\n           WHERE i.organization_id = $1\n           ORDER BY f.sort, lower(f.name), i.sort, lower(i.name)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "instruments",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "instruments",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "family_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "instrument_families",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "family",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "instrument_families",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "transposition",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "instruments",
+            "name": "transposition"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "aliases",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "instruments",
+            "name": "aliases"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "sort",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "instruments",
+            "name": "sort"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "usage!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "22690f4d26ba0e5ae3e7750a27ca78605e974c40c30e3a2ea8bcf94270d8c79d"
+}

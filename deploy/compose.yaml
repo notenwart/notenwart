@@ -1,0 +1,104 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# notenwart with PostgreSQL and Garage (S3). From the repository root:
+#   deploy/generate-secrets.sh > deploy/.env
+#   docker compose -f deploy/compose.yaml up -d                      # released image from ghcr.io
+#   docker compose -f deploy/compose.yaml up -d --build              # or built from this checkout
+# With a domain pointing to the server, Caddy terminates HTTPS (certificate from Let's Encrypt):
+#   NOTENWART_DOMAIN=noten.example.org in deploy/.env, then add  --profile https
+# See docs/operations.md.
+
+x-s3: &s3
+  S3_BUCKET: notenwart
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?run deploy/generate-secrets.sh}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?run deploy/generate-secrets.sh}
+
+services:
+  notenwart:
+    image: ghcr.io/notenwart/notenwart:${NOTENWART_VERSION:-latest}
+    build: ..
+    ports:
+      # Only on the host by default: put HTTPS in front (Caddy below, or your own proxy).
+      - "${NOTENWART_PORT:-127.0.0.1:8080}:8080"
+    environment:
+      <<: *s3
+      DATABASE_URL: postgres://notenwart:${POSTGRES_PASSWORD:?run deploy/generate-secrets.sh}@db/notenwart
+      STORAGE: s3
+      S3_ENDPOINT: http://garage:3900
+      S3_REGION: garage
+      NOTENWART_PUBLIC_URL: ${NOTENWART_PUBLIC_URL:-http://localhost:8080}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-notenwart <notenwart@localhost>}
+      NOTENWART_LANGUAGE: ${NOTENWART_LANGUAGE:-en}
+      # Optional: an external AI that also reads first pages (docs/operations.md, "Recognising sheet music").
+      NOTENWART_AI_PROVIDER: ${NOTENWART_AI_PROVIDER:-}
+      NOTENWART_AI_URL: ${NOTENWART_AI_URL:-}
+      NOTENWART_AI_KEY: ${NOTENWART_AI_KEY:-}
+      NOTENWART_AI_MODEL: ${NOTENWART_AI_MODEL:-}
+      # Optional: sign-in with the organisation's accounts (docs/operations.md, "Single sign-on").
+      NOTENWART_SSO_ISSUER: ${NOTENWART_SSO_ISSUER:-}
+      NOTENWART_SSO_CLIENT_ID: ${NOTENWART_SSO_CLIENT_ID:-}
+      NOTENWART_SSO_CLIENT_SECRET: ${NOTENWART_SSO_CLIENT_SECRET:-}
+      NOTENWART_SSO_NAME: ${NOTENWART_SSO_NAME:-}
+      NOTENWART_SSO_EMAIL_CLAIM: ${NOTENWART_SSO_EMAIL_CLAIM:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      garage-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: notenwart
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: notenwart
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notenwart"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  garage:
+    image: dxflrs/garage:v2.1.0
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?run deploy/generate-secrets.sh}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?run deploy/generate-secrets.sh}
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage:/var/lib/garage
+    restart: unless-stopped
+
+  # One-shot: layout, bucket and access key (idempotent, runs on every start).
+  garage-init:
+    image: python:3.13-alpine
+    command: ["python3", "-I", "/init.py"]
+    environment:
+      <<: *s3
+      GARAGE_ADMIN_URL: http://garage:3903
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
+    volumes:
+      - ./garage/init.py:/init.py:ro
+    depends_on:
+      - garage
+
+  # Optional HTTPS in front of notenwart: --profile https, with NOTENWART_DOMAIN set.
+  caddy:
+    image: caddy:2
+    profiles: [https]
+    command: ["caddy", "reverse-proxy", "--from", "${NOTENWART_DOMAIN:-localhost}", "--to", "notenwart:8080"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy:/data
+    depends_on:
+      - notenwart
+    restart: unless-stopped
+
+volumes:
+  db:
+  garage:
+  caddy:

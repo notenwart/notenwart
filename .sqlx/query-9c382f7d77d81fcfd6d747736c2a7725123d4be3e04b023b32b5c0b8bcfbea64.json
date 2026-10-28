@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO ensemble_member_parts (ensemble_id, user_id, instrument_id, voice)\n         SELECT $1, $2, i, v FROM unnest($3::uuid[], $4::smallint[]) AS t(i, v)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "UuidArray",
+        "Int2Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9c382f7d77d81fcfd6d747736c2a7725123d4be3e04b023b32b5c0b8bcfbea64"
+}

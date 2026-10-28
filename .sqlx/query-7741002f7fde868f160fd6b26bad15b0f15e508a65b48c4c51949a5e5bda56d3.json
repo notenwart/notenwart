@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE guest_links SET revoked_at = coalesce(revoked_at, now()) WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7741002f7fde868f160fd6b26bad15b0f15e508a65b48c4c51949a5e5bda56d3"
+}

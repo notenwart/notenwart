@@ -1,0 +1,131 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.id, p.work_id, p.source_id, p.label, p.instrument_id, p.voice, p.pages,\n                  cardinality(p.pages) AS \"page_count!\", p.created_at, p.updated_at\n           FROM parts p LEFT JOIN instruments i ON i.id = p.instrument_id\n           WHERE p.work_id = $1\n           ORDER BY i.sort NULLS FIRST, p.voice NULLS FIRST, lower(p.label)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "work_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "work_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "source_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "source_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "label",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "instrument_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "instrument_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "voice",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "voice"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "pages",
+        "type_info": "Int4Array",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "pages"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "page_count!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "parts",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "185d5ca80b04ac952277f700bb0bb460d7bd43405767933c12210ec5fa3e1763"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT logo_id FROM ensembles WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "logo_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "ensembles",
+            "name": "logo_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "4ef669778011d6cbb2dbb36fb004cd961400268a3da34ab40159481cb432f74d"
+}

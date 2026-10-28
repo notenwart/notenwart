@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE parts SET instrument_id = $2 WHERE instrument_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1abd0059e5d7fce383c2558ab6cf118120ecd94b4fea30bb9dd763e1260f6b02"
+}

@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pages, updated_at FROM annotations WHERE user_id = $1 AND part_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pages",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "annotations",
+            "name": "pages"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "annotations",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "60cf76556ba52608637420f3d44240adf6cb8f939380405f1dba32fb83b5f533"
+}

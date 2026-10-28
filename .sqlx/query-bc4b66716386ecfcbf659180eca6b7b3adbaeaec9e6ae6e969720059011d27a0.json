@@ -1,0 +1,224 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT w.id, w.title, w.composer, w.arranger, w.publisher, w.lyricist, w.society_number, w.archive_location, w.instrumentation, w.difficulty,\n                  w.duration_seconds, w.source, w.notes, w.tags, w.created_at, w.updated_at,\n                  (SELECT count(*) FROM source_files s WHERE s.work_id = w.id) AS \"source_count!\",\n                  (SELECT count(*) FROM parts p WHERE p.work_id = w.id) AS \"part_count!\"\n           FROM works w\n           WHERE w.organization_id = $1\n             AND ($2::text IS NULL OR w.title ILIKE $2 OR w.composer ILIKE $2 OR w.arranger ILIKE $2\n                  OR w.publisher ILIKE $2 OR w.lyricist ILIKE $2 OR w.instrumentation ILIKE $2\n                  OR w.society_number ILIKE $2 OR array_to_string(w.tags, ' ') ILIKE $2)\n             AND ($3::text IS NULL OR $3 = ANY (w.tags))\n           ORDER BY lower(w.title), w.created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "composer",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "composer"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "arranger",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "arranger"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "publisher",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "publisher"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "lyricist",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "lyricist"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "society_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "society_number"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "archive_location",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "archive_location"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "instrumentation",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "instrumentation"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "difficulty",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "difficulty"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "duration_seconds",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "duration_seconds"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "source",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "notes",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "notes"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "tags",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "tags"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "source_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 17,
+        "name": "part_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "bc4b66716386ecfcbf659180eca6b7b3adbaeaec9e6ae6e969720059011d27a0"
+}

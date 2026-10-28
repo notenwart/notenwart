@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM parts p JOIN ensemble_works ew ON ew.work_id = p.work_id\n                          WHERE p.id = $1 AND ew.ensemble_id = $2) AS \"x!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "x!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c2d66d626e2da85eb850fcbff702636a909a9ae238c2658ea99bb2269152aa9b"
+}

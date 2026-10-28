@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT program_id, position, label, duration_seconds, note FROM program_breaks WHERE program_id = ANY($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "program_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "program_breaks",
+            "name": "program_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "program_breaks",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "label",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "program_breaks",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "duration_seconds",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "program_breaks",
+            "name": "duration_seconds"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "note",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "program_breaks",
+            "name": "note"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "80017b7e757283f180bc37793071551f696047006fda5beb3cd6b6ea7926e1cb"
+}

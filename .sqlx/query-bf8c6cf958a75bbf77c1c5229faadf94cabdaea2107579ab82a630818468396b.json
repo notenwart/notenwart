@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO sessions (token_hash, user_id, organization_id, expires_at)\n         VALUES ($1, $2, $3, now() + make_interval(days => $4))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Uuid",
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bf8c6cf958a75bbf77c1c5229faadf94cabdaea2107579ab82a630818468396b"
+}

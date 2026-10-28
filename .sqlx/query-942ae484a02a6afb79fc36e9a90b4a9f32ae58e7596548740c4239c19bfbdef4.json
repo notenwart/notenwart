@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE loans SET reminded_at = coalesce(reminded_at, now()),\n                              overdue_reminded_at = CASE WHEN $2 THEN now() ELSE overdue_reminded_at END\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "942ae484a02a6afb79fc36e9a90b4a9f32ae58e7596548740c4239c19bfbdef4"
+}

@@ -1,0 +1,102 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT u.id, u.display_name AS name, u.email AS \"email?\", m.role AS \"role: Role\",\n                  u.password_hash IS NOT NULL AS \"has_password!\", u.last_login_at,\n                  CASE WHEN o.profile_pictures THEN '/api/images/' || u.avatar_id END AS avatar_url\n           FROM users u JOIN memberships m ON m.user_id = u.id JOIN organizations o ON o.id = m.organization_id\n           WHERE m.organization_id = $1\n           ORDER BY lower(u.display_name), u.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "email?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "role: Role",
+        "type_info": {
+          "Custom": {
+            "name": "organization_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "librarian",
+                "leader",
+                "member"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "has_password!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_login_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "last_login_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "avatar_url",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      null
+    ]
+  },
+  "hash": "5c727fa7d1aada1ffdf877596265bd6a9274e85761d3e0a559984fe97af3b39e"
+}

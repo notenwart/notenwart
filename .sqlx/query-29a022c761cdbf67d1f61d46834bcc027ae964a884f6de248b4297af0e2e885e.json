@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT e.name, m.leader, m.created_at,\n                  coalesce(array_agg(i.name || coalesce(' ' || p.voice, '')) FILTER (WHERE i.id IS NOT NULL), '{}')\n                      AS \"plays!: Vec<String>\"\n           FROM ensemble_members m JOIN ensembles e ON e.id = m.ensemble_id\n           LEFT JOIN ensemble_member_parts p ON p.ensemble_id = m.ensemble_id AND p.user_id = m.user_id\n           LEFT JOIN instruments i ON i.id = p.instrument_id\n           WHERE m.user_id = $1 AND e.organization_id = $2\n           GROUP BY e.name, m.leader, m.created_at ORDER BY e.name",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "ensembles",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "leader",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "ensemble_members",
+            "name": "leader"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "ensemble_members",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "plays!: Vec<String>",
+        "type_info": "TextArray",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "29a022c761cdbf67d1f61d46834bcc027ae964a884f6de248b4297af0e2e885e"
+}

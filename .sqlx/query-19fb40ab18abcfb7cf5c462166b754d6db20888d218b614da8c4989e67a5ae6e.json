@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM part_grants g USING parts p WHERE g.part_id = p.id AND g.ensemble_id = $1 AND p.work_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "19fb40ab18abcfb7cf5c462166b754d6db20888d218b614da8c4989e67a5ae6e"
+}

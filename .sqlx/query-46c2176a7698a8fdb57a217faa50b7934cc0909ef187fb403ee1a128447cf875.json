@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.ensemble_id FROM programs p JOIN ensembles e ON e.id = p.ensemble_id\n         WHERE p.id = $1 AND e.organization_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ensemble_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "programs",
+            "name": "ensemble_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "46c2176a7698a8fdb57a217faa50b7934cc0909ef187fb403ee1a128447cf875"
+}

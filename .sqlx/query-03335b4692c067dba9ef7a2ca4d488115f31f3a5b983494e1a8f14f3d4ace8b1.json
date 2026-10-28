@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO ensemble_member_parts (ensemble_id, user_id, instrument_id, voice)\n                 VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "03335b4692c067dba9ef7a2ca4d488115f31f3a5b983494e1a8f14f3d4ace8b1"
+}

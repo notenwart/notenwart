@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO ensemble_members (ensemble_id, user_id, leader) VALUES ($1, $2, $3)\n         ON CONFLICT (ensemble_id, user_id) DO UPDATE SET leader = excluded.leader",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fa027ad4fd2919329c53ec7a649d55c48a6f1f1014bb782e1cfba65d7d0034c4"
+}

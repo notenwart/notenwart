@@ -1,0 +1,15 @@
+[workspace]
+members = ["server"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/notenwart/notenwart"
+
+# Password hashing is far too slow unoptimised; keep it fast in debug builds and tests.
+[profile.dev.package.argon2]
+opt-level = 3
+[profile.dev.package.blake2]
+opt-level = 3

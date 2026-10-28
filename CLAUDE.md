@@ -1,0 +1,91 @@
+# CLAUDE.md – project rules for Claude Code
+
+## Context
+
+notenwart: self-hosted sheet music library for music schools, orchestras and ensembles. Free software under
+**AGPL-3.0-or-later**, except `api/` (the OpenAPI contract), which is **MIT**. GitHub organization `notenwart`,
+repository `notenwart`. A project of
+falkOSS – Falcon Lake Open Source Software gUG (haftungsbeschränkt) i. G.
+Design and milestones: **docs/spec.md** – read before any work and keep it up to date.
+
+## Working rules
+
+- **Language:** everything in this repository is English (code, comments, docs, commits). The UI's source strings
+  are English and translated in `web/src/lib/i18n/` (German first – the pilot is a German music school).
+  Talk to the maintainer in German.
+- **Name:** always lowercase – **notenwart**, also at the start of a sentence and in titles (`brand/README.md`).
+  Environment variables keep `NOTENWART_`.
+- **Licence header:** every new own source file (Rust, TypeScript, Svelte, SQL, YAML, shell) starts with
+  `SPDX-License-Identifier: AGPL-3.0-or-later`; files in `api/` use `MIT`.
+- **The API contract is MIT:** never copy server or web code into `api/`; it may only describe the HTTP API.
+  Change `api/openapi.yaml` first, then implement it in `server/` and run `pnpm --dir web api:types`.
+- **Public from day one:** no personal data in tracked files – no names, user names, home paths, hostnames, keys,
+  and no real data of pilot users (pupils, teachers).
+- **Copyright of sheet music is the operator's responsibility.** The software offers neutral tools and enforces
+  nothing.
+- **Privacy:** no tracking, no telemetry, no externally loaded fonts or scripts; collect only what a feature needs
+  (pupils are often minors). Members never see other members' data; emails only for admins.
+- **Every handler checks the role** via `CurrentUser` (`is_admin`, `is_staff`, `reads_library`); add an API test
+  for each new rule in `server/tests/`.
+- **Never delete (your own actions):** move files to `_to_delete/` (git-ignored) instead.
+- **Verified before claimed:** mark what can't be verified as `OPEN` in code/docs.
+- **After every change:** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`;
+  `pnpm --dir web lint`, `pnpm --dir web check`, `pnpm --dir web test`, `pnpm --dir web build`. Commit only when
+  green. After SQL changes: `cargo sqlx prepare --workspace -- --all-targets` and commit `.sqlx/` (Docker and CI
+  build offline from it).
+- **Commits:** signed off (`git commit -s`, DCO). Push only after asking the maintainer.
+- **Migrations** are append-only: never edit one that has been committed; add a new one.
+- **Releases:** bump the version in `Cargo.toml` and `web/package.json`, turn `[Unreleased]` in
+  `docs/changelog.md` into the version's section, commit, then tag `vX.Y.Z` (the release workflow checks both).
+
+## Layout
+
+```
+Cargo.toml            workspace
+server/               notenwart binary (axum, sqlx): `serve`, `migrate`
+  src/api.rs          JSON API under /api (health), merges the other routers
+  src/auth.rs         setup, sign-in, one-time links, sessions, roles (CurrentUser extractor)
+  src/people.rs       users and invitations (admin), bulk actions on people
+  src/catalogue.rs    each organisation's instrument families and instruments, copied from the built-in ones
+  src/ensembles.rs    ensembles, members, works, "my music", part visibility
+  src/mail.rs         SMTP (optional; links go to the log without it), email texts in en/de
+  src/import.rs       import of people from a table (CSV in the web app)
+  src/programs.rs     programmes of an ensemble (works and breaks), single parts granted to members
+  src/loans.rs        paper archive: loans of printed parts
+  src/privacy.rs      data export per person, deleting people with a deletion record
+  src/sso.rs          sign-in through the organisation's identity provider (OpenID Connect)
+  src/system.rs       admins: server facts, test email, setup checklist
+  src/images.rs       avatars: organisation logo, ensemble logos and symbols, profile pictures
+  src/recordings.rs   audio recordings of works and parts, served with byte ranges
+  src/guests.rs       guest links: parts for substitutes without an account
+  src/notify.rs       notifications: recording, inbox, settings, email digests and loan reminders (worker)
+  src/annotations.rs  each person's strokes on a part
+  src/library.rs      works, suggestions (facets), tags, source files, parts
+  src/pdf.rs          page count and page extraction (lopdf)
+  src/recognize.rs    reading first pages: pdftotext / Tesseract, rules for title, composer, part …
+  src/ai.rs           optional external AI for reading pages (Anthropic or OpenAI-compatible)
+  src/storage.rs      object store: S3 or local directory
+  src/web.rs          embedded web app (web/build), SPA fallback
+  migrations/         PostgreSQL migrations
+  tests/              API tests (#[sqlx::test], in-memory store), PDF tests
+.sqlx/                offline query data for sqlx
+web/                  SvelteKit SPA/PWA (adapter-static), service worker in src/service-worker/
+  src/lib/components/ SourceSplitter (split editor), Thumbnail, WorkForm, MemberRow; shared: DataTable (sort, columns, pages,
+                      selection), Select (searchable choice), Autocomplete, TagInput, Dialogs (confirm, notices)
+  src/lib/session.svelte.ts  signed-in user, role helpers; route guard in routes/+layout.svelte
+  src/lib/viewer.ts   page turning (modes, keys, taps) – pure, unit-tested; components/Viewer.svelte renders
+  src/lib/offline.ts  IndexedDB store and sync of offline parts; wiped on sign-out
+  src/lib/i18n/       t('English text') and the German dictionary de.ts – add every new UI string there
+  src/lib/csv.ts      reading spreadsheet exports for the import
+  src/lib/bulk-import.ts  reading a folder/ZIP of sheet music and planning works and parts (routes/works/import)
+  src/routes/view/    the viewer page (stored copy first if current, else the server)
+api/openapi.yaml      API contract (MIT)
+deploy/               compose.yaml (full stack, optional Caddy), compose.dev.yaml (PostgreSQL + Garage for development),
+                      garage/ (config, init script), generate-secrets.sh, backup.sh, restore.sh
+docs/                 the site for notenwart.dev (GitHub Pages, Jekyll + Just the Docs, docs/_config.yml): guide/ (user
+                      guide) and de/ (the same in German – change both), operations.md (running a server; German:
+                      de/betrieb.md), api.md, contributing.md, spec.md (specification and milestones), changelog.md
+                      (a line under [Unreleased] for every user-visible change)
+brand/                logo and icons, generated by brand/generate.py – edit that, not the exports; copy
+                      brand/web/* into web/static/ and the website repo after a change
+```

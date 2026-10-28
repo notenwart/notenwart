@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM login_tokens WHERE user_id = $1 AND purpose = 'invitation' AND used_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5933a17beccbb0ce4054456d53753b69650b47467512f37e0546a040d40c115a"
+}

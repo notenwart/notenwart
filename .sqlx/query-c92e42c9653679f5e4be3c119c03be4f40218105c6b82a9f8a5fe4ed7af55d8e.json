@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO login_tokens (token_hash, user_id, purpose, expires_at)\n         VALUES ($1, $2, $3::text::token_purpose, now() + make_interval(mins => $4)) RETURNING expires_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "expires_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "login_tokens",
+            "name": "expires_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Uuid",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c92e42c9653679f5e4be3c119c03be4f40218105c6b82a9f8a5fe4ed7af55d8e"
+}

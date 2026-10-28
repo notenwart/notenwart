@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO ensemble_works (ensemble_id, work_id) SELECT $1, w FROM unnest($2::uuid[]) AS w\n         ON CONFLICT DO NOTHING RETURNING work_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "work_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "ensemble_works",
+            "name": "work_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "91b388a54039569549da29a585639ec7ed68cac2b72e992f7b19ffd6131f4484"
+}

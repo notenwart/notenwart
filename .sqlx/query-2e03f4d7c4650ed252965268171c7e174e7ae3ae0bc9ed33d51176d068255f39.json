@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT (SELECT count(*) FROM memberships WHERE organization_id = $1) AS \"people!\",\n                  (SELECT count(*) FROM ensembles WHERE organization_id = $1) AS \"ensembles!\",\n                  (SELECT count(*) FROM works WHERE organization_id = $1) AS \"works!\",\n                  (SELECT count(*) FROM parts p JOIN works w ON w.id = p.work_id WHERE w.organization_id = $1) AS \"parts!\",\n                  (SELECT count(*) FROM recordings WHERE organization_id = $1) AS \"recordings!\",\n                  (SELECT coalesce(sum(s.size), 0) FROM source_files s JOIN works w ON w.id = s.work_id\n                     WHERE w.organization_id = $1)::bigint\n                  + (SELECT coalesce(sum(size), 0) FROM recordings WHERE organization_id = $1)::bigint\n                  + (SELECT coalesce(sum(size), 0) FROM images WHERE organization_id = $1)::bigint AS \"bytes!\",\n                  o.logo_id IS NOT NULL AS \"logo!\", o.setup_done\n           FROM organizations o WHERE o.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "people!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "ensembles!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "works!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "parts!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "recordings!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "logo!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "setup_done",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "setup_done"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      false
+    ]
+  },
+  "hash": "2e03f4d7c4650ed252965268171c7e174e7ae3ae0bc9ed33d51176d068255f39"
+}

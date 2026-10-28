@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO annotations (user_id, part_id, pages) VALUES ($1, $2, $3)\n         ON CONFLICT (user_id, part_id) DO UPDATE SET pages = excluded.pages, updated_at = now()\n         RETURNING updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "annotations",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e75caba842b612535a287c79e1ad7960b6d7ca03ab17aed17b1c6f3086ab4be3"
+}

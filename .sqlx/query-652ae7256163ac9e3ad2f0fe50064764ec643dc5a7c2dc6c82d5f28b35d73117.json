@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT m.user_id, u.display_name, m.leader,\n                  CASE WHEN o.profile_pictures THEN '/api/images/' || u.avatar_id END AS avatar_url,\n                  coalesce(array_agg(p.instrument_id) FILTER (WHERE p.instrument_id IS NOT NULL), '{}')\n                      AS \"instruments!: Vec<Uuid>\",\n                  coalesce(array_agg(coalesce(p.voice, 0)) FILTER (WHERE p.instrument_id IS NOT NULL), '{}')\n                      AS \"voices!: Vec<i16>\"\n           FROM ensemble_members m\n           JOIN users u ON u.id = m.user_id\n           JOIN ensembles e2 ON e2.id = m.ensemble_id JOIN organizations o ON o.id = e2.organization_id\n           LEFT JOIN ensemble_member_parts p ON p.ensemble_id = m.ensemble_id AND p.user_id = m.user_id\n           WHERE m.ensemble_id = $1 AND ($2::uuid IS NULL OR m.user_id = $2)\n           GROUP BY m.user_id, u.display_name, m.leader, o.profile_pictures, u.avatar_id\n           ORDER BY m.leader DESC, lower(u.display_name)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "ensemble_members",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "display_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "leader",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "ensemble_members",
+            "name": "leader"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "avatar_url",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "instruments!: Vec<Uuid>",
+        "type_info": "UuidArray",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "voices!: Vec<i16>",
+        "type_info": "Int4Array",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "652ae7256163ac9e3ad2f0fe50064764ec643dc5a7c2dc6c82d5f28b35d73117"
+}

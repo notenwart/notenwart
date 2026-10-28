@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO recordings (id, organization_id, work_id, kind, origin, title, part_id, instrument_id, voice,\n                                 file_name, content_type, size, sha256, duration_seconds, storage_key, created_by)\n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Int2",
+        "Text",
+        "Text",
+        "Int8",
+        "Text",
+        "Float4",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "beb8c4ea7ab921c675e64b1a926655463bd898731cdf8667766b68688656abd5"
+}

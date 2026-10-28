@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM source_files s USING works w WHERE s.id = $1 AND w.id = s.work_id AND w.organization_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "56f451f63b6474747c6e27c077861df1ae2d58238ae3108032ad785d550a276d"
+}

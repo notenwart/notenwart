@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT field AS \"field!\", value AS \"value!\" FROM (\n               SELECT 'composer' AS field, composer AS value FROM works WHERE organization_id = $1\n               UNION ALL SELECT 'arranger', arranger FROM works WHERE organization_id = $1\n               UNION ALL SELECT 'publisher', publisher FROM works WHERE organization_id = $1\n               UNION ALL SELECT 'instrumentation', instrumentation FROM works WHERE organization_id = $1\n               UNION ALL SELECT 'tag', tag FROM works, unnest(tags) AS tag WHERE organization_id = $1\n           ) used\n           WHERE value IS NOT NULL\n           GROUP BY field, value\n           ORDER BY field, count(*) DESC, lower(value)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "field!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "value!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "e067c8ee8915bacacd3904ed1c63579f478231077583555f411f82d26208f1b5"
+}

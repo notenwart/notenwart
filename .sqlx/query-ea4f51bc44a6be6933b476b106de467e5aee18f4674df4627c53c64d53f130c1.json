@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT borrower_id AS \"id!\" FROM loans\n           WHERE organization_id = $1 AND borrower_id = ANY($2) AND returned_on IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "loans",
+            "name": "borrower_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "ea4f51bc44a6be6933b476b106de467e5aee18f4674df4627c53c64d53f130c1"
+}

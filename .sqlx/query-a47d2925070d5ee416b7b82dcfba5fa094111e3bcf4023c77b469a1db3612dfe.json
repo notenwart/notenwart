@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT f.id, f.name, f.sort,\n                  (SELECT count(*) FROM instruments i WHERE i.family_id = f.id) AS \"instrument_count!\"\n           FROM instrument_families f WHERE f.organization_id = $1\n           ORDER BY f.sort, lower(f.name)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "instrument_families",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "instrument_families",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "sort",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "instrument_families",
+            "name": "sort"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "instrument_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "a47d2925070d5ee416b7b82dcfba5fa094111e3bcf4023c77b469a1db3612dfe"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE ensemble_member_parts SET instrument_id = $2 WHERE instrument_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b12ceb3ac6c4c9d2cde1a63d38f2f28b12a24541c260592d0b1c4ae07c5e5084"
+}

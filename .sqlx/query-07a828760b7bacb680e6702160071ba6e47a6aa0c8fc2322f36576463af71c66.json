@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE shared_annotations SET notified_at = now() WHERE ensemble_id = $1 AND part_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "07a828760b7bacb680e6702160071ba6e47a6aa0c8fc2322f36576463af71c66"
+}

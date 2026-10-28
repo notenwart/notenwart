@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (\n               SELECT 1 FROM ensembles e WHERE e.id = $1 AND e.organization_id = $2\n                 AND ($4 OR EXISTS (SELECT 1 FROM ensemble_members m WHERE m.ensemble_id = e.id AND m.user_id = $3))\n           ) AS \"x!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "x!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "fbf8d7bc31d712c6ab3545c6daabb558159dc4aea7df8e63bd5c2b877d821e19"
+}

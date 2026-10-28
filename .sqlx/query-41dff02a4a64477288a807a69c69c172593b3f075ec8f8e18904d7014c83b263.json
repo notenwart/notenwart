@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM ensemble_members l JOIN ensemble_members m ON m.ensemble_id = l.ensemble_id\n                          WHERE l.user_id = $1 AND l.leader AND m.user_id = $2) AS \"x!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "x!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "41dff02a4a64477288a807a69c69c172593b3f075ec8f8e18904d7014c83b263"
+}

@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Release on a version tag (v0.1.0 …): checks the tag against Cargo.toml, publishes the container image to the
+# GitHub Container Registry (ghcr.io/notenwart/notenwart:<version> and :latest) and creates a GitHub release with
+# the version's section of docs/changelog.md. linux/amd64 only for now (arm64: OPEN).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Version from the tag matches Cargo.toml and the changelog
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          have=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          [ "$want" = "$have" ] || { echo "::error::Tag $GITHUB_REF_NAME but Cargo.toml says $have"; exit 1; }
+          awk -v v="$want" '$0 ~ "^## \\[" v "\\]" {on=1; next} /^## \[/ {on=0} on' docs/changelog.md > "$RUNNER_TEMP/notes.md"
+          [ -s "$RUNNER_TEMP/notes.md" ] || { echo "::error::docs/changelog.md has no section [$want]"; exit 1; }
+          echo "VERSION=$want" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/notenwart/notenwart:${{ env.VERSION }}
+            ghcr.io/notenwart/notenwart:latest
+          labels: |
+            org.opencontainers.image.title=notenwart
+            org.opencontainers.image.description=Self-hosted sheet music library for music schools, orchestras and bands
+            org.opencontainers.image.source=https://github.com/notenwart/notenwart
+            org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.licenses=AGPL-3.0-or-later
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" --title "notenwart $VERSION" --notes-file "$RUNNER_TEMP/notes.md"

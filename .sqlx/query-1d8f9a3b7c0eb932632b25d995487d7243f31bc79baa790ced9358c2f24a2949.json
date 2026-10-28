@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM instrument_families WHERE organization_id = $1) AS \"has!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "has!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "1d8f9a3b7c0eb932632b25d995487d7243f31bc79baa790ced9358c2f24a2949"
+}

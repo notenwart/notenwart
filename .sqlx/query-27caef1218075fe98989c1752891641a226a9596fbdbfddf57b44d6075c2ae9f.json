@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT w.title, l.item, l.quantity, to_char(l.lent_on, 'YYYY-MM-DD') AS lent_on,\n                to_char(l.due_on, 'YYYY-MM-DD') AS due_on, to_char(l.returned_on, 'YYYY-MM-DD') AS returned_on, l.note\n         FROM loans l JOIN works w ON w.id = l.work_id\n         WHERE l.borrower_id = $1 AND l.organization_id = $2 ORDER BY l.lent_on",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "works",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "item",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "loans",
+            "name": "item"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "quantity",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "loans",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "lent_on",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "due_on",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "returned_on",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "note",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "loans",
+            "name": "note"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      true
+    ]
+  },
+  "hash": "27caef1218075fe98989c1752891641a226a9596fbdbfddf57b44d6075c2ae9f"
+}

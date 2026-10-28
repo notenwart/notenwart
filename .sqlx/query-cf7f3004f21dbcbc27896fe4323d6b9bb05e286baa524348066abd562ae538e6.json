@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO instruments (organization_id, name, family_id, transposition, aliases, sort)\n         VALUES ($1, $2, $3, $4, $5, coalesce($6, (SELECT coalesce(max(sort), 0) + 1 FROM instruments\n                                                   WHERE family_id = $3)))\n         RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "instruments",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Text",
+        "TextArray",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cf7f3004f21dbcbc27896fe4323d6b9bb05e286baa524348066abd562ae538e6"
+}
