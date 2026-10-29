@@ -6,8 +6,8 @@ permalink: /contributing/
 
 # Contributing
 
-notenwart is one repository: the Rust workspace in `crates/`, the web app (SvelteKit, TypeScript) in `web/`, embedded
-into the binary, the API contract in `api/`, deployment files in `deploy/`, the brand kit in `brand/` and this
+notenwart is one repository: the Rust workspace in `crates/`, the web app (Vite, Svelte 5, TypeScript) in `web/`, embedded
+into the binary, the API contract in `api/`, deployment files in `deploy/` and this
 documentation in `docs/`.
 
 ## Set up
@@ -62,8 +62,10 @@ pnpm --dir web build
   in `web/src/lib/i18n/`; add every new string to the German dictionary `de.ts` (a test fails otherwise). The user
   guide exists in English (`docs/guide/`) and German (`docs/de/`) – change both.
 - **The name** is always lowercase: notenwart, also at the start of a sentence.
+<!-- REUSE-IgnoreStart -->
 - **Licence header:** every new source file starts with `SPDX-License-Identifier: AGPL-3.0-or-later`; files in `api/`
   with `MIT`. Never copy server or web code into `api/` – it only describes the HTTP API.
+<!-- REUSE-IgnoreEnd -->
 - **API first:** change `api/openapi.yaml`, then implement it in `crates/` and regenerate the web types with
   `pnpm --dir web api:types`.
 - **Every command checks the role** (in `notenwart-app`, via `CurrentUser`), and every new rule gets an API test in
@@ -78,7 +80,7 @@ pnpm --dir web build
 - **Privacy:** no tracking, no telemetry, no fonts or scripts from elsewhere; collect only what a feature needs –
   pupils are often minors. No personal data in tracked files, not even in tests or examples.
 - **Unverified things** are marked `OPEN` in code and docs.
-- **Changelog:** a line under `[Unreleased]` in `docs/changelog.md` for every user-visible change.
+- **Changelog:** a line under `[Unreleased]` in `CHANGELOG.md` for every user-visible change.
 
 ## Commits
 
@@ -91,13 +93,15 @@ git commit -s
 
 ## Releases
 
-Bump the version in `Cargo.toml`, `web/package.json` and `api/openapi.yaml`, turn `[Unreleased]` in the changelog
+Bump the version in `Cargo.toml`, `web/package.json` and `api/openapi.yaml`, turn `[Unreleased]` in `CHANGELOG.md`
 into the version's section, commit, then tag `vX.Y.Z`. The release workflow checks the tag against `Cargo.toml` and
 the changelog, publishes the image
 `ghcr.io/notenwart/notenwart:X.Y.Z` (and `:latest`) and creates a GitHub release from the changelog section.
 
 ## This documentation
 
-The site on notenwart.dev is built by GitHub Pages from `docs/` (Jekyll with the Just the Docs theme). Pages have
+The site on notenwart.dev is built from `docs/` with Jekyll and the Just the Docs theme and published by GitHub
+Actions (`.github/workflows/pages.yml`, the shared workflow of falkoss/starterpack); pull requests only build it. Pages have
 front matter with `title`, `nav_order` and `permalink`; German pages live in `docs/de/` with `parent: Deutsch`.
-`docs/assets/` holds copies of the brand files.
+`docs/assets/` holds copies from [notenwart/brand](https://github.com/notenwart/brand) – copy them again after a
+change there, never edit them here. The documentation's text is under CC BY 4.0.

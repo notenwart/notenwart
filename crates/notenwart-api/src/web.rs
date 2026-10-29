@@ -9,13 +9,12 @@ use rust_embed::RustEmbed;
 /// The built web app. Run `pnpm --dir web build` before a release build; a build without it serves the API and a
 /// short page that says so. The folder is named here only.
 #[derive(RustEmbed)]
-#[folder = "../../web/build"]
+#[folder = "../../web/dist"]
 #[allow_missing = true]
 struct Assets;
 
-/// Build output that carries its hash in its name and never changes: `assets/` (Vite), `_app/immutable/`
-/// (SvelteKit, until the web app has moved to Vite).
-const IMMUTABLE: [&str; 2] = ["assets/", "_app/immutable/"];
+/// Build output that carries its hash in its name and never changes: Vite's `assets/`.
+const IMMUTABLE: [&str; 1] = ["assets/"];
 
 /// What the web app may load: itself only – no script, style, font or connection elsewhere, no frames. The
 /// exceptions, all made in the browser itself: `data:` images (small inline images and icons), `blob:` images

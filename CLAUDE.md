@@ -13,10 +13,13 @@ Design and milestones: **docs/spec.md** – read before any work and keep it up 
 - **Language:** everything in this repository is English (code, comments, docs, commits). The UI's source strings
   are English and translated in `web/src/lib/i18n/` (German first – the pilot is a German music school).
   Talk to the maintainer in German.
-- **Name:** always lowercase – **notenwart**, also at the start of a sentence and in titles (`brand/README.md`).
+- **Name:** always lowercase – **notenwart**, also at the start of a sentence and in titles ([notenwart/brand](https://github.com/notenwart/brand)).
   Environment variables keep `NOTENWART_`.
+<!-- REUSE-IgnoreStart -->
 - **Licence header:** every new own source file (Rust, TypeScript, Svelte, SQL, YAML, shell) starts with
-  `SPDX-License-Identifier: AGPL-3.0-or-later`; files in `api/` use `MIT`.
+  `SPDX-License-Identifier: AGPL-3.0-or-later`; files in `api/` use `MIT`; texts in `docs/` are CC BY 4.0 (REUSE.toml),
+  copies of the brand's artwork CC BY-ND 4.0. CI checks REUSE and a DCO sign-off on every commit.
+<!-- REUSE-IgnoreEnd -->
 - **The API contract is MIT:** never copy server or web code into `api/`; it may only describe the HTTP API.
   Change `api/openapi.yaml` first, then implement it in `crates/` and run `pnpm --dir web api:types`.
 - **Public from day one:** no personal data in tracked files – no names, user names, home paths, hostnames, keys,
@@ -44,7 +47,7 @@ Design and milestones: **docs/spec.md** – read before any work and keep it up 
   there). A `cargo deny` finding is ignored only with a written reason in `deny.toml`.
 - **Migrations** are append-only: never edit one that has been committed; add a new one.
 - **Releases:** bump the version in `Cargo.toml` and `web/package.json`, turn `[Unreleased]` in
-  `docs/changelog.md` into the version's section, commit, then tag `vX.Y.Z` (the release workflow checks both).
+  `CHANGELOG.md` into the version's section, commit, then tag `vX.Y.Z` (the release workflow checks both).
 
 ## Layout
 
@@ -76,28 +79,30 @@ crates/notenwart-app/    every command and query – the only layer interfaces u
   src/files.rs        uploads as interfaces hand them in
 crates/notenwart-api/    axum: one module per feature with its routes and thin handlers; auth.rs (session cookie,
                          SignedIn extractor), error.rs (AppError → status + JSON), files.rs (multipart, PDF
-                         responses), web.rs (embedded web app from web/build, CSP and security headers, SPA fallback)
+                         responses), web.rs (embedded web app from web/dist, CSP and security headers, SPA fallback)
   tests/              API tests (#[sqlx::test], in-memory store), PDF tests
 crates/notenwart/        the binary (clap): `serve`, `migrate`
 scripts/check-age.py  checks that every locked crate is at least 14 days old
 .sqlx/                offline query data for sqlx
-web/                  SvelteKit SPA/PWA (adapter-static), service worker in src/service-worker/
+web/                  Vite + Svelte 5 SPA/PWA, built to web/dist; index.html → src/main.ts → src/App.svelte (shell, route guard)
+  src/routes.ts       the routes (path → page in src/pages/, lazily loaded); src/lib/router.svelte.ts: page, goto, links
+  src/service-worker.ts  offline shell; built as its own entry by service-worker.plugin.ts (files to cache injected)
+  public/             copied as is: theme.js (before first paint), manifest, robots.txt, copies from notenwart/brand
   src/lib/components/ SourceSplitter (split editor), Thumbnail, WorkForm, MemberRow; shared: DataTable (sort, columns, pages,
                       selection), Select (searchable choice), Autocomplete, TagInput, Dialogs (confirm, notices)
-  src/lib/session.svelte.ts  signed-in user, role helpers; route guard in routes/+layout.svelte
+  src/lib/session.svelte.ts  signed-in user, role helpers; route guard in App.svelte
   src/lib/viewer.ts   page turning (modes, keys, taps) – pure, unit-tested; components/Viewer.svelte renders
   src/lib/offline.ts  IndexedDB store and sync of offline parts; wiped on sign-out
   src/lib/i18n/       t('English text') and the German dictionary de.ts – add every new UI string there
   src/lib/csv.ts      reading spreadsheet exports for the import
-  src/lib/bulk-import.ts  reading a folder/ZIP of sheet music and planning works and parts (routes/works/import)
-  src/routes/view/    the viewer page (stored copy first if current, else the server)
+  src/lib/bulk-import.ts  reading a folder/ZIP of sheet music and planning works and parts (pages/WorksImport.svelte)
+  src/pages/View.svelte  the viewer page (stored copy first if current, else the server)
 api/openapi.yaml      API contract (MIT)
 deploy/               compose.yaml (full stack, optional Caddy), compose.dev.yaml (PostgreSQL + Garage for development),
                       garage/ (config, init script), generate-secrets.sh, backup.sh, restore.sh
 docs/                 the site for notenwart.dev (GitHub Pages, Jekyll + Just the Docs, docs/_config.yml): guide/ (user
                       guide) and de/ (the same in German – change both), operations.md (running a server; German:
-                      de/betrieb.md), api.md, contributing.md, spec.md (specification and milestones), changelog.md
-                      (a line under [Unreleased] for every user-visible change)
-brand/                logo and icons, generated by brand/generate.py – edit that, not the exports; copy
-                      brand/web/* into web/static/ and the website repo after a change
+                      de/betrieb.md), api.md, contributing.md, spec.md (specification and milestones);
+                      published by GitHub Actions (pages.yml); assets/ are copies from notenwart/brand
+CHANGELOG.md          a line under [Unreleased] for every user-visible change
 ```

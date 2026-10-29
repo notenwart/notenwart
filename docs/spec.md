@@ -306,7 +306,8 @@ Browser/PWA (TypeScript) ──HTTPS──► notenwart (one Rust binary) ──
   `<organization>/sources/<id>.pdf`, `<organization>/parts/<id>.pdf`.
 - **Files** are streamed through the server after an access check, so the object store never has to be reachable
   from browsers. Presigned URLs as an option for large installations: `OPEN`.
-- **Web app:** SvelteKit with `adapter-static` (SPA, no Node on the server), pdf.js, service worker + IndexedDB for
+- **Web app:** Vite and Svelte 5 (SPA with a small router of its own, no Node on the server; until 0.1.0
+  SvelteKit with `adapter-static`), pdf.js, service worker + IndexedDB for
   offline parts. UI in German and English (`web/src/lib/i18n/`): English source strings as keys, German
   dictionary, a unit test fails when a UI string lacks a translation; the browser language decides until the user
   picks one in their account. Server error messages stay English and are translated in the web app where they are

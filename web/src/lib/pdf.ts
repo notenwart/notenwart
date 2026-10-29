@@ -15,10 +15,21 @@ function pdfjs() {
 	return library;
 }
 
+/** Where pdf.js finds its image decoders, fonts and character maps (served by pdfjs.plugin.ts). */
+const RESOURCES = {
+	wasmUrl: '/pdfjs/wasm/',
+	standardFontDataUrl: '/pdfjs/standard_fonts/',
+	cMapUrl: '/pdfjs/cmaps/',
+	iccUrl: '/pdfjs/iccs/'
+};
+
 /** Opens a PDF from a URL or from bytes (e.g. an offline copy). */
 export async function openPdf(source: string | ArrayBuffer): Promise<PDFDocumentProxy> {
 	const { getDocument } = await pdfjs();
-	return getDocument(typeof source === 'string' ? { url: source } : { data: source }).promise;
+	return getDocument({
+		...(typeof source === 'string' ? { url: source } : { data: source }),
+		...RESOURCES
+	}).promise;
 }
 
 /**

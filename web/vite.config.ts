@@ -4,6 +4,7 @@
 // where NOTENWART_LISTEN says.
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vite';
+import { pdfjsResources } from './pdfjs.plugin.js';
 import { serviceWorker } from './service-worker.plugin.js';
 
 const api = `http://${process.env.NOTENWART_LISTEN ?? '127.0.0.1:8080'}`;
@@ -25,7 +26,7 @@ const csp = [
 ].join('; ');
 
 export default defineConfig({
-	plugins: [svelte(), serviceWorker('src/service-worker.ts')],
+	plugins: [svelte(), pdfjsResources(), serviceWorker('src/service-worker.ts')],
 	build: { outDir: 'dist', emptyOutDir: true, assetsInlineLimit: 0 },
 	// The browser's Host header is passed on as it is: the server refuses changes whose Origin is another host.
 	server: { proxy: { '/api': { target: api } } },

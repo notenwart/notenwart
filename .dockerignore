@@ -1,6 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 target
 web/node_modules
-web/build
-web/.svelte-kit
+web/dist
 _to_delete
 .git

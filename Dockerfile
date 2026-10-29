@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # One image: the Rust server with the web app embedded.
 
-FROM node:24-bookworm-slim AS web
+FROM node:26-bookworm-slim AS web
 RUN corepack enable
 WORKDIR /src
 COPY api api
@@ -18,7 +18,7 @@ COPY .sqlx .sqlx
 COPY crates crates
 # Queries are checked against .sqlx (`cargo sqlx prepare --workspace -- --all-targets`), not a live database.
 ENV SQLX_OFFLINE=true
-COPY --from=web /src/web/build web/build
+COPY --from=web /src/web/dist web/dist
 RUN cargo build --release --locked
 
 FROM debian:bookworm-slim

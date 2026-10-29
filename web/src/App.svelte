@@ -70,8 +70,8 @@
 <header class="site">
 	<a class="brand" href={resolve('/')}>
 		<!-- Both marks are loaded; the colour scheme (system or chosen) shows one. -->
-		<img class="mark-light" src="/mark-light.svg" alt="" width="28" height="28" />
-		<img class="mark-dark" src="/mark-dark.svg" alt="" width="28" height="28" />
+		<img class="mark-light" src="/notenwart-mark-on-light.svg" alt="" width="28" height="28" />
+		<img class="mark-dark" src="/notenwart-mark-on-dark.svg" alt="" width="28" height="28" />
 		notenwart
 	</a>
 	{#if session.me?.organization.logoUrl}

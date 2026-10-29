@@ -15,6 +15,7 @@
 		"src/**/*.svelte",
 		"vite.config.ts",
 		"service-worker.plugin.ts",
+		"pdfjs.plugin.ts",
 		"service-worker.plugin.test.ts"
 	]
 }

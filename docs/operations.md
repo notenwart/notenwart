@@ -68,7 +68,7 @@ docker compose -f deploy/compose.yaml --profile https pull
 docker compose -f deploy/compose.yaml --profile https up -d
 ```
 
-Database migrations run when notenwart starts. Make a backup before updating; read `docs/changelog.md`. To stay on
+Database migrations run when notenwart starts. Make a backup before updating; read the [changelog]({{ '/changelog/' | relative_url }}). To stay on
 a version, set `NOTENWART_VERSION`.
 
 ## Backups

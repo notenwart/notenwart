@@ -13,7 +13,7 @@ SPDX-FileCopyrightText = "falkOSS – Falcon Lake Open Source Software gUG (haft
 path = ["README.md", "CLAUDE.md", "CHANGELOG.md", "CONTRIBUTING.md", "**/.gitignore", ".dockerignore", ".env.example",
   "Cargo.lock", ".sqlx/**", "web/package.json", "web/pnpm-lock.yaml", "web/tsconfig.json", "web/**/tsconfig.json",
   "web/.npmrc", "web/.prettierignore", "web/.vscode/**", "web/src/lib/api/schema.d.ts", "web/src/lib/api-types.ts",
-  "web/public/robots.txt", "web/static/robots.txt"]
+  "web/public/robots.txt", "web/public/manifest.webmanifest", "deny.toml", "rust-toolchain.toml"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "falkOSS – Falcon Lake Open Source Software gUG (haftungsbeschränkt) i. G. and the notenwart contributors"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
@@ -35,8 +35,7 @@ SPDX-License-Identifier = "CC-BY-4.0"
 # Copies of the artwork from notenwart/brand – kept as they are, under its licence.
 [[annotations]]
 path = ["docs/assets/**", "web/public/favicon.*", "web/public/apple-touch-icon.png", "web/public/icon-*.png",
-  "web/public/notenwart-mark-*.svg", "web/public/site.webmanifest", "web/static/favicon.*",
-  "web/static/apple-touch-icon.png", "web/static/icon-*.png", "web/static/mark-*.svg", "web/static/manifest.webmanifest"]
+  "web/public/notenwart-mark-*.svg"]
 precedence = "override"
 SPDX-FileCopyrightText = "falkOSS – Falcon Lake Open Source Software gUG (haftungsbeschränkt) i. G."
 SPDX-License-Identifier = "CC-BY-ND-4.0"
