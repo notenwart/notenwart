@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::App;
 use crate::auth::CurrentUser;
 use crate::error::{AppError, AppResult};
+use notenwart_store::system as db;
 
 /// Steps admins tick off themselves.
 const MANUAL: [&str; 3] = ["instruments", "backups", "testMail"];
@@ -101,30 +102,15 @@ pub struct OrganizationChoice {
 /// Every organisation on this server, oldest first. Only for the operator at the console (`notenwart tui`), who
 /// already holds the server's own access; no person of an organisation reaches it.
 pub async fn organizations(state: &App) -> AppResult<Vec<OrganizationChoice>> {
-    Ok(sqlx::query_as!(OrganizationChoice, "SELECT id, name FROM organizations ORDER BY created_at")
-        .fetch_all(&state.pool)
-        .await?)
+    Ok(db::organizations(&state.pool)
+        .await
+        .map(|rows| rows.into_iter().map(OrganizationChoice::from).collect::<Vec<_>>())?)
 }
 
 pub async fn system(state: &App, user: &CurrentUser) -> AppResult<System> {
     user.require(user.is_admin())?;
     let org = user.organization_id;
-    let c = sqlx::query!(
-        r#"SELECT (SELECT count(*) FROM memberships WHERE organization_id = $1) AS "people!",
-                  (SELECT count(*) FROM ensembles WHERE organization_id = $1) AS "ensembles!",
-                  (SELECT count(*) FROM works WHERE organization_id = $1) AS "works!",
-                  (SELECT count(*) FROM parts p JOIN works w ON w.id = p.work_id WHERE w.organization_id = $1) AS "parts!",
-                  (SELECT count(*) FROM recordings WHERE organization_id = $1) AS "recordings!",
-                  (SELECT coalesce(sum(s.size), 0) FROM source_files s JOIN works w ON w.id = s.work_id
-                     WHERE w.organization_id = $1)::bigint
-                  + (SELECT coalesce(sum(size), 0) FROM recordings WHERE organization_id = $1)::bigint
-                  + (SELECT coalesce(sum(size), 0) FROM images WHERE organization_id = $1)::bigint AS "bytes!",
-                  o.logo_id IS NOT NULL AS "logo!", o.setup_done
-           FROM organizations o WHERE o.id = $1"#,
-        org
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let c = db::system(&state.pool, org).await?;
     let manual = |key: &str| c.setup_done.iter().any(|d| d == key);
     let checklist = vec![
         Step { key: "logo", done: c.logo, optional: true, manual: false },
@@ -212,15 +198,12 @@ pub async fn tick(state: &App, user: &CurrentUser, key: String, input: TickInput
 }
 
 async fn mark(state: &App, organization_id: uuid::Uuid, key: &str, done: bool) -> AppResult<()> {
-    sqlx::query!(
-        "UPDATE organizations SET setup_done = CASE WHEN $3 THEN array_append(array_remove(setup_done, $2), $2)
-                                                  ELSE array_remove(setup_done, $2) END
-         WHERE id = $1",
-        organization_id,
-        key,
-        done
-    )
-    .execute(&state.pool)
-    .await?;
+    db::mark(&state.pool, organization_id, key, done).await?;
     Ok(())
+}
+
+impl From<db::OrganizationchoiceRow> for OrganizationChoice {
+    fn from(row: db::OrganizationchoiceRow) -> Self {
+        OrganizationChoice { id: row.id, name: row.name }
+    }
 }

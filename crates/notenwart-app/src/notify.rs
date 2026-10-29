@@ -17,6 +17,7 @@ use crate::App;
 use crate::auth::CurrentUser;
 use crate::error::{AppError, AppResult};
 use crate::mail::{Language, send_or_log};
+use notenwart_store::notify as db;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -85,16 +86,12 @@ async fn record(
     params: &Value,
     link: &str,
 ) -> anyhow::Result<()> {
-    let settings: HashMap<Uuid, Channels> = sqlx::query!(
-        "SELECT user_id, in_app, email, push FROM notification_settings WHERE kind = $1 AND user_id = ANY($2)",
-        kind.key(),
-        recipients
-    )
-    .fetch_all(&state.pool)
-    .await?
-    .into_iter()
-    .map(|r| (r.user_id, Channels { in_app: r.in_app, email: r.email, push: r.push }))
-    .collect();
+    let settings: HashMap<Uuid, Channels> =
+        db::record_select_notification_settings(&state.pool, kind.key(), recipients)
+            .await?
+            .into_iter()
+            .map(|r| (r.user_id, Channels { in_app: r.in_app, email: r.email, push: r.push }))
+            .collect();
     let (mut users, mut in_app, mut email) = (vec![], vec![], vec![]);
     for &user in recipients {
         let channels = settings.get(&user).copied().unwrap_or(kind.default_channels());
@@ -104,19 +101,8 @@ async fn record(
             email.push(channels.email);
         }
     }
-    sqlx::query!(
-        "INSERT INTO notifications (organization_id, user_id, kind, params, link, in_app, email_due)
-         SELECT $1, u, $2, $3, $4, a, e FROM unnest($5::uuid[], $6::bool[], $7::bool[]) AS t(u, a, e)",
-        organization_id,
-        kind.key(),
-        params,
-        link,
-        &users,
-        &in_app,
-        &email
-    )
-    .execute(&state.pool)
-    .await?;
+    db::record_insert_notifications(&state.pool, organization_id, kind.key(), params, link, &users, &in_app, &email)
+        .await?;
     Ok(())
 }
 
@@ -128,36 +114,17 @@ pub fn later(state: &App, organization_id: Uuid, kind: Kind, recipients: Vec<Uui
 
 /// What a part is called and which work it belongs to.
 pub async fn part_names(state: &App, part_id: Uuid) -> Option<(String, String)> {
-    sqlx::query!("SELECT p.label, w.title FROM parts p JOIN works w ON w.id = p.work_id WHERE p.id = $1", part_id)
-        .fetch_optional(&state.pool)
-        .await
-        .ok()
-        .flatten()
-        .map(|r| (r.label, r.title))
+    db::part_names(&state.pool, part_id).await.ok().flatten().map(|r| (r.label, r.title))
 }
 
 /// The people who see a part (its ensembles' members playing it, leaders, grants), except `but`.
 pub async fn who_sees_part(state: &App, part_id: Uuid, but: Uuid) -> Vec<Uuid> {
-    sqlx::query_scalar!(
-        r#"SELECT DISTINCT user_id AS "user_id!" FROM visible_parts WHERE part_id = $1 AND user_id <> $2"#,
-        part_id,
-        but
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default()
+    db::who_sees_part(&state.pool, part_id, but).await.unwrap_or_default()
 }
 
 /// Members of an ensemble, except `but`.
 pub async fn ensemble_members(state: &App, ensemble_id: Uuid, but: Uuid) -> Vec<Uuid> {
-    sqlx::query_scalar!(
-        "SELECT user_id FROM ensemble_members WHERE ensemble_id = $1 AND user_id <> $2",
-        ensemble_id,
-        but
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default()
+    db::ensemble_members(&state.pool, ensemble_id, but).await.unwrap_or_default()
 }
 
 // ---- the inbox ----
@@ -198,25 +165,14 @@ pub async fn inbox(state: &App, user: &CurrentUser, query: InboxQuery) -> AppRes
     // One snapshot for the count and the list: notifications are recorded in the background, and one arriving in
     // between would show in the list but not in the count.
     let mut tx = state.pool.begin().await?;
-    sqlx::query!("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY").execute(&mut *tx).await?;
-    let unread = sqlx::query_scalar!(
-        r#"SELECT count(*) AS "n!" FROM notifications WHERE user_id = $1 AND in_app AND read_at IS NULL"#,
-        user.id
-    )
-    .fetch_one(&mut *tx)
-    .await?;
+    db::inbox_set_transaction(&mut *tx).await?;
+    let unread = db::inbox_select_notifications(&mut *tx, user.id).await?;
     let items = if query.count == Some(true) {
         vec![]
     } else {
-        sqlx::query_as!(
-            Notification,
-            r#"SELECT id, kind, params, link, created_at, read_at IS NOT NULL AS "read!"
-               FROM notifications WHERE user_id = $1 AND in_app
-               ORDER BY created_at DESC LIMIT 100"#,
-            user.id
-        )
-        .fetch_all(&mut *tx)
-        .await?
+        db::inbox_select_notifications_2(&mut *tx, user.id)
+            .await
+            .map(|rows| rows.into_iter().map(Notification::from).collect::<Vec<_>>())?
     };
     tx.commit().await?;
     Ok(Inbox { unread, items })
@@ -229,14 +185,7 @@ pub struct ReadInput {
 }
 
 pub async fn mark_read(state: &App, user: &CurrentUser, input: ReadInput) -> AppResult<()> {
-    sqlx::query!(
-        "UPDATE notifications SET read_at = now()
-         WHERE user_id = $1 AND read_at IS NULL AND ($2::uuid[] IS NULL OR id = ANY($2))",
-        user.id,
-        input.ids.as_deref()
-    )
-    .execute(&state.pool)
-    .await?;
+    db::mark_read(&state.pool, user.id, input.ids.as_deref()).await?;
     Ok(())
 }
 
@@ -251,13 +200,11 @@ pub struct Setting {
 }
 
 pub async fn settings(state: &App, user: &CurrentUser) -> AppResult<Vec<Setting>> {
-    let stored: HashMap<String, Channels> =
-        sqlx::query!("SELECT kind, in_app, email, push FROM notification_settings WHERE user_id = $1", user.id)
-            .fetch_all(&state.pool)
-            .await?
-            .into_iter()
-            .map(|r| (r.kind, Channels { in_app: r.in_app, email: r.email, push: r.push }))
-            .collect();
+    let stored: HashMap<String, Channels> = db::settings(&state.pool, user.id)
+        .await?
+        .into_iter()
+        .map(|r| (r.kind, Channels { in_app: r.in_app, email: r.email, push: r.push }))
+        .collect();
     Ok(KINDS
         .into_iter()
         // Guest links are made by staff only.
@@ -271,16 +218,14 @@ pub async fn save_settings(state: &App, user: &CurrentUser, input: Vec<Setting>)
         return Err(AppError::Invalid("one setting per kind".into()));
     }
     for setting in &input {
-        sqlx::query!(
-            "INSERT INTO notification_settings (user_id, kind, in_app, email, push) VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (user_id, kind) DO UPDATE SET in_app = $3, email = $4, push = $5",
+        db::save_settings(
+            &state.pool,
             user.id,
             setting.kind.key(),
             setting.channels.in_app,
             setting.channels.email,
-            setting.channels.push
+            setting.channels.push,
         )
-        .execute(&state.pool)
         .await?;
     }
     settings(state, user).await
@@ -309,45 +254,20 @@ pub fn spawn_worker(state: App) {
 
 /// Notifies borrowers a day before a loan is due, and once more when it is overdue.
 pub async fn remind_loans(state: &App) -> anyhow::Result<()> {
-    let due = sqlx::query!(
-        r#"SELECT l.id, l.organization_id, l.borrower_id AS "borrower_id!", l.item, w.title,
-                  to_char(l.due_on, 'YYYY-MM-DD') AS "due_on!", l.due_on < current_date AS "overdue!"
-           FROM loans l JOIN works w ON w.id = l.work_id
-           WHERE l.returned_on IS NULL AND l.borrower_id IS NOT NULL AND l.due_on IS NOT NULL
-             AND ((l.reminded_at IS NULL AND l.due_on <= current_date + 1)
-                  OR (l.overdue_reminded_at IS NULL AND l.due_on < current_date))"#
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let due = db::remind_loans_select_loans(&state.pool).await?;
     for loan in due {
         let params = serde_json::json!({
             "work": loan.title, "item": loan.item, "date": loan.due_on, "overdue": loan.overdue,
         });
         notify(state, loan.organization_id, Kind::LoanDue, &[loan.borrower_id], params, "/").await;
-        sqlx::query!(
-            "UPDATE loans SET reminded_at = coalesce(reminded_at, now()),
-                              overdue_reminded_at = CASE WHEN $2 THEN now() ELSE overdue_reminded_at END
-             WHERE id = $1",
-            loan.id,
-            loan.overdue
-        )
-        .execute(&state.pool)
-        .await?;
+        db::remind_loans_update_loans(&state.pool, loan.id, loan.overdue).await?;
     }
     Ok(())
 }
 
 /// One email per person with everything collected for at least `wait`.
 pub async fn send_digests(state: &App, wait: Duration) -> anyhow::Result<usize> {
-    let rows = sqlx::query!(
-        r#"SELECT n.id, n.user_id, n.kind, n.params, n.link, u.email AS "email?", u.display_name
-           FROM notifications n JOIN users u ON u.id = n.user_id
-           WHERE n.email_due AND n.emailed_at IS NULL AND n.created_at < now() - make_interval(secs => $1)
-           ORDER BY n.user_id, n.created_at"#,
-        wait.as_secs_f64()
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let rows = db::send_digests_select_notifications(&state.pool, wait.as_secs_f64()).await?;
     struct Digest {
         user: Uuid,
         email: Option<String>,
@@ -383,9 +303,7 @@ pub async fn send_digests(state: &App, wait: Duration) -> anyhow::Result<usize> 
             sent += 1;
         }
         // Without an address (or mail) nothing will come of it: do not try again.
-        sqlx::query!("UPDATE notifications SET emailed_at = now() WHERE id = ANY($1)", &digest.ids)
-            .execute(&state.pool)
-            .await?;
+        db::send_digests_update_notifications(&state.pool, &digest.ids).await?;
     }
     Ok(sent)
 }
@@ -433,6 +351,19 @@ pub fn describe(language: Language, kind: &str, params: &Value, link: Option<&st
     match link {
         Some(link) if link != "/" => format!("{text}\n  {public_url}{link}"),
         _ => text,
+    }
+}
+
+impl From<db::NotificationRow> for Notification {
+    fn from(row: db::NotificationRow) -> Self {
+        Notification {
+            id: row.id,
+            kind: row.kind,
+            params: row.params,
+            link: row.link,
+            created_at: row.created_at,
+            read: row.read,
+        }
     }
 }
 

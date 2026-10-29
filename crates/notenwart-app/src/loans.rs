@@ -9,6 +9,7 @@ use uuid::Uuid;
 use crate::App;
 use crate::auth::CurrentUser;
 use crate::error::{AppError, AppResult};
+use notenwart_store::loans as db;
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -83,15 +84,9 @@ async fn check(state: &App, user: &CurrentUser, input: LoanInput) -> AppResult<C
         return Err(AppError::Invalid("quantity must be 1 to 999".into()));
     }
     let borrower_name = match input.borrower_id {
-        Some(id) => sqlx::query_scalar!(
-            "SELECT u.display_name FROM users u
-             JOIN memberships m ON m.user_id = u.id WHERE u.id = $1 AND m.organization_id = $2",
-            id,
-            user.organization_id
-        )
-        .fetch_optional(&state.pool)
-        .await?
-        .ok_or_else(|| AppError::Invalid("unknown borrower".into()))?,
+        Some(id) => db::check(&state.pool, id, user.organization_id)
+            .await?
+            .ok_or_else(|| AppError::Invalid("unknown borrower".into()))?,
         None => input
             .borrower_name
             .map(|n| n.trim().to_string())
@@ -119,24 +114,9 @@ async fn loans(
     borrower: Option<Uuid>,
     open_only: bool,
 ) -> AppResult<Vec<Loan>> {
-    Ok(sqlx::query_as!(
-        Loan,
-        r#"SELECT l.id, l.work_id, w.title AS work_title, l.item, l.quantity, l.borrower_id, l.borrower_name,
-                  to_char(l.lent_on, 'YYYY-MM-DD') AS "lent_on!", to_char(l.due_on, 'YYYY-MM-DD') AS due_on,
-                  to_char(l.returned_on, 'YYYY-MM-DD') AS returned_on, l.note
-           FROM loans l JOIN works w ON w.id = l.work_id
-           WHERE l.organization_id = $1
-             AND ($2::uuid IS NULL OR l.work_id = $2)
-             AND ($3::uuid IS NULL OR l.borrower_id = $3)
-             AND (NOT $4 OR l.returned_on IS NULL)
-           ORDER BY l.returned_on IS NOT NULL, l.lent_on, lower(w.title)"#,
-        organization_id,
-        work,
-        borrower,
-        open_only
-    )
-    .fetch_all(&state.pool)
-    .await?)
+    Ok(db::loans(&state.pool, organization_id, work, borrower, open_only)
+        .await
+        .map(|rows| rows.into_iter().map(Loan::from).collect::<Vec<_>>())?)
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
@@ -188,34 +168,24 @@ async fn find(state: &App, user: &CurrentUser, loan_id: Uuid) -> AppResult<Loan>
 
 pub async fn create(state: &App, user: &CurrentUser, work_id: Uuid, input: LoanInput) -> AppResult<Loan> {
     user.require(user.is_staff())?;
-    let known = sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM works WHERE id = $1 AND organization_id = $2) AS "known!""#,
-        work_id,
-        user.organization_id
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let known = db::create_select_works(&state.pool, work_id, user.organization_id).await?;
     if !known {
         return Err(AppError::NotFound);
     }
     let l = check(state, user, input).await?;
-    let id = sqlx::query_scalar!(
-        "INSERT INTO loans (organization_id, work_id, item, quantity, borrower_id, borrower_name, lent_on, due_on,
-                            returned_on, note)
-         VALUES ($1, $2, $3, $4, $5, $6, coalesce($7::text::date, current_date), $8::text::date, $9::text::date, $10)
-         RETURNING id",
+    let id = db::create_insert_loans(
+        &state.pool,
         user.organization_id,
         work_id,
-        l.item,
+        &l.item,
         l.quantity,
         l.borrower_id,
-        l.borrower_name,
-        l.lent_on,
-        l.due_on,
-        l.returned_on,
-        l.note
+        &l.borrower_name,
+        l.lent_on.as_deref(),
+        l.due_on.as_deref(),
+        l.returned_on.as_deref(),
+        l.note.as_deref(),
     )
-    .fetch_one(&state.pool)
     .await?;
     find(state, user, id).await
 }
@@ -224,22 +194,18 @@ pub async fn update(state: &App, user: &CurrentUser, loan_id: Uuid, input: LoanI
     user.require(user.is_staff())?;
     find(state, user, loan_id).await?;
     let l = check(state, user, input).await?;
-    sqlx::query!(
-        "UPDATE loans SET item = $2, quantity = $3, borrower_id = $4, borrower_name = $5,
-                          lent_on = coalesce($6::text::date, lent_on), due_on = $7::text::date,
-                          returned_on = $8::text::date, note = $9
-         WHERE id = $1",
+    db::update(
+        &state.pool,
         loan_id,
-        l.item,
+        &l.item,
         l.quantity,
         l.borrower_id,
-        l.borrower_name,
-        l.lent_on,
-        l.due_on,
-        l.returned_on,
-        l.note
+        &l.borrower_name,
+        l.lent_on.as_deref(),
+        l.due_on.as_deref(),
+        l.returned_on.as_deref(),
+        l.note.as_deref(),
     )
-    .execute(&state.pool)
     .await?;
     find(state, user, loan_id).await
 }
@@ -247,7 +213,7 @@ pub async fn update(state: &App, user: &CurrentUser, loan_id: Uuid, input: LoanI
 pub async fn remove(state: &App, user: &CurrentUser, loan_id: Uuid) -> AppResult<()> {
     user.require(user.is_staff())?;
     find(state, user, loan_id).await?;
-    sqlx::query!("DELETE FROM loans WHERE id = $1", loan_id).execute(&state.pool).await?;
+    db::remove(&state.pool, loan_id).await?;
     Ok(())
 }
 
@@ -260,13 +226,31 @@ pub struct Borrower {
 /// People who can borrow: names only, for choosing one (admins and librarians).
 pub async fn borrowers(state: &App, user: &CurrentUser) -> AppResult<Vec<Borrower>> {
     user.require(user.is_staff())?;
-    Ok(sqlx::query_as!(
-        Borrower,
-        "SELECT u.id, u.display_name AS name FROM users u
-             JOIN memberships m ON m.user_id = u.id WHERE m.organization_id = $1
-             ORDER BY lower(u.display_name)",
-        user.organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?)
+    Ok(db::borrowers(&state.pool, user.organization_id)
+        .await
+        .map(|rows| rows.into_iter().map(Borrower::from).collect::<Vec<_>>())?)
+}
+
+impl From<db::LoanRow> for Loan {
+    fn from(row: db::LoanRow) -> Self {
+        Loan {
+            id: row.id,
+            work_id: row.work_id,
+            work_title: row.work_title,
+            item: row.item,
+            quantity: row.quantity,
+            borrower_id: row.borrower_id,
+            borrower_name: row.borrower_name,
+            lent_on: row.lent_on,
+            due_on: row.due_on,
+            returned_on: row.returned_on,
+            note: row.note,
+        }
+    }
+}
+
+impl From<db::BorrowerRow> for Borrower {
+    fn from(row: db::BorrowerRow) -> Self {
+        Borrower { id: row.id, name: row.name }
+    }
 }

@@ -18,11 +18,11 @@ use crate::error::{AppError, AppResult};
 use crate::files::Upload;
 use crate::pdf::{self, PdfError};
 use crate::storage::{part_key, source_key};
+use notenwart_store::library as db;
 
 /// The organisation's instruments, for recognising parts.
 async fn known_instruments(state: &App, user: &CurrentUser) -> AppResult<Vec<crate::recognize::Known>> {
-    Ok(sqlx::query!("SELECT id, name, aliases FROM instruments WHERE organization_id = $1", user.organization_id)
-        .fetch_all(&state.pool)
+    Ok(db::known_instruments(&state.pool, user.organization_id)
         .await?
         .into_iter()
         .map(|r| crate::recognize::Known { id: r.id, name: r.name, aliases: r.aliases })
@@ -31,15 +31,7 @@ async fn known_instruments(state: &App, user: &CurrentUser) -> AppResult<Vec<cra
 
 /// A stored source PDF of the user's organisation.
 async fn source_bytes(state: &App, user: &CurrentUser, source_id: Uuid) -> AppResult<bytes::Bytes> {
-    sqlx::query!(
-        "SELECT s.id FROM source_files s JOIN works w ON w.id = s.work_id
-         WHERE s.id = $1 AND w.organization_id = $2",
-        source_id,
-        user.organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    db::source_bytes(&state.pool, source_id, user.organization_id).await?.ok_or(AppError::NotFound)?;
     Ok(state.store.get(&source_key(user.organization_id, source_id)).await?.bytes().await?)
 }
 
@@ -91,12 +83,7 @@ pub async fn recognize(
 
 pub async fn list_tags(state: &App, user: &CurrentUser) -> AppResult<Vec<String>> {
     user.require(user.reads_library())?;
-    let tags = sqlx::query_scalar!(
-        r#"SELECT DISTINCT tag AS "tag!" FROM works, unnest(tags) AS tag WHERE organization_id = $1 ORDER BY 1"#,
-        user.organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let tags = db::list_tags(&state.pool, user.organization_id).await?;
     Ok(tags)
 }
 
@@ -113,21 +100,7 @@ pub struct Facets {
 
 pub async fn work_facets(state: &App, user: &CurrentUser) -> AppResult<Facets> {
     user.require(user.reads_library())?;
-    let rows = sqlx::query!(
-        r#"SELECT field AS "field!", value AS "value!" FROM (
-               SELECT 'composer' AS field, composer AS value FROM works WHERE organization_id = $1
-               UNION ALL SELECT 'arranger', arranger FROM works WHERE organization_id = $1
-               UNION ALL SELECT 'publisher', publisher FROM works WHERE organization_id = $1
-               UNION ALL SELECT 'instrumentation', instrumentation FROM works WHERE organization_id = $1
-               UNION ALL SELECT 'tag', tag FROM works, unnest(tags) AS tag WHERE organization_id = $1
-           ) used
-           WHERE value IS NOT NULL
-           GROUP BY field, value
-           ORDER BY field, count(*) DESC, lower(value)"#,
-        user.organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let rows = db::work_facets(&state.pool, user.organization_id).await?;
     let mut facets =
         Facets { composers: vec![], arrangers: vec![], publishers: vec![], instrumentations: vec![], tags: vec![] };
     for row in rows {
@@ -266,24 +239,7 @@ pub async fn list_works(state: &App, user: &CurrentUser, filter: WorkFilter) -> 
         .filter(|q| !q.is_empty())
         .map(|q| format!("%{}%", q.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_")));
     let tag = filter.tag.filter(|t| !t.is_empty());
-    let rows = sqlx::query!(
-        r#"SELECT w.id, w.title, w.composer, w.arranger, w.publisher, w.lyricist, w.society_number, w.archive_location, w.instrumentation, w.difficulty,
-                  w.duration_seconds, w.source, w.notes, w.tags, w.created_at, w.updated_at,
-                  (SELECT count(*) FROM source_files s WHERE s.work_id = w.id) AS "source_count!",
-                  (SELECT count(*) FROM parts p WHERE p.work_id = w.id) AS "part_count!"
-           FROM works w
-           WHERE w.organization_id = $1
-             AND ($2::text IS NULL OR w.title ILIKE $2 OR w.composer ILIKE $2 OR w.arranger ILIKE $2
-                  OR w.publisher ILIKE $2 OR w.lyricist ILIKE $2 OR w.instrumentation ILIKE $2
-                  OR w.society_number ILIKE $2 OR array_to_string(w.tags, ' ') ILIKE $2)
-             AND ($3::text IS NULL OR $3 = ANY (w.tags))
-           ORDER BY lower(w.title), w.created_at"#,
-        user.organization_id,
-        pattern,
-        tag
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let rows = db::list_works(&state.pool, user.organization_id, pattern.as_deref(), tag.as_deref()).await?;
     Ok(rows
         .into_iter()
         .map(|r| WorkSummary {
@@ -314,121 +270,77 @@ pub async fn list_works(state: &App, user: &CurrentUser, filter: WorkFilter) -> 
 pub async fn create_work(state: &App, user: &CurrentUser, input: WorkInput) -> AppResult<Work> {
     user.require(user.is_staff())?;
     let w = input.normalize()?;
-    let work = sqlx::query_as!(
-        Work,
-        r#"INSERT INTO works (organization_id, title, composer, arranger, publisher, instrumentation, difficulty,
-                              duration_seconds, source, notes, tags, lyricist, society_number, archive_location)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-           RETURNING id, title, composer, arranger, publisher, lyricist, society_number, archive_location, instrumentation, difficulty, duration_seconds,
-                     source, notes, tags, created_at, updated_at"#,
+    let work = db::create_work(
+        &state.pool,
         user.organization_id,
-        w.title,
-        w.composer,
-        w.arranger,
-        w.publisher,
-        w.instrumentation,
+        &w.title,
+        w.composer.as_deref(),
+        w.arranger.as_deref(),
+        w.publisher.as_deref(),
+        w.instrumentation.as_deref(),
         w.difficulty,
         w.duration_seconds,
-        w.source,
-        w.notes,
+        w.source.as_deref(),
+        w.notes.as_deref(),
         &w.tags,
-        w.lyricist,
-        w.society_number,
-        w.archive_location
+        w.lyricist.as_deref(),
+        w.society_number.as_deref(),
+        w.archive_location.as_deref(),
     )
-    .fetch_one(&state.pool)
-    .await?;
+    .await
+    .map(Work::from)?;
     Ok(work)
 }
 
 async fn find_work(state: &App, user: &CurrentUser, id: Uuid) -> AppResult<Work> {
-    sqlx::query_as!(
-        Work,
-        r#"SELECT id, title, composer, arranger, publisher, lyricist, society_number, archive_location, instrumentation, difficulty, duration_seconds,
-                  source, notes, tags, created_at, updated_at
-           FROM works WHERE id = $1 AND organization_id = $2"#,
-        id,
-        user.organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)
+    db::find_work(&state.pool, id, user.organization_id).await.map(|row| row.map(Work::from))?.ok_or(AppError::NotFound)
 }
 
 pub async fn get_work(state: &App, user: &CurrentUser, work_id: Uuid) -> AppResult<WorkDetail> {
     user.require(user.reads_library())?;
     let work = find_work(state, user, work_id).await?;
-    let sources = sqlx::query_as!(
-        SourceFile,
-        r#"SELECT id, work_id, file_name, size, sha256, page_count, created_at
-           FROM source_files WHERE work_id = $1 ORDER BY created_at"#,
-        work_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
-    let parts = sqlx::query_as!(
-        Part,
-        r#"SELECT p.id, p.work_id, p.source_id, p.label, p.instrument_id, p.voice, p.pages,
-                  cardinality(p.pages) AS "page_count!", p.created_at, p.updated_at
-           FROM parts p LEFT JOIN instruments i ON i.id = p.instrument_id
-           WHERE p.work_id = $1
-           ORDER BY i.sort NULLS FIRST, p.voice NULLS FIRST, lower(p.label)"#,
-        work_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let sources = db::get_work_select_source_files(&state.pool, work_id)
+        .await
+        .map(|rows| rows.into_iter().map(SourceFile::from).collect::<Vec<_>>())?;
+    let parts = db::get_work_select_parts(&state.pool, work_id)
+        .await
+        .map(|rows| rows.into_iter().map(Part::from).collect::<Vec<_>>())?;
     Ok(WorkDetail { work, sources, parts })
 }
 
 pub async fn update_work(state: &App, user: &CurrentUser, work_id: Uuid, input: WorkInput) -> AppResult<Work> {
     user.require(user.is_staff())?;
     let w = input.normalize()?;
-    sqlx::query_as!(
-        Work,
-        r#"UPDATE works SET title = $3, composer = $4, arranger = $5, publisher = $6, instrumentation = $7,
-                            difficulty = $8, duration_seconds = $9, source = $10, notes = $11, tags = $12,
-                            lyricist = $13, society_number = $14, archive_location = $15, updated_at = now()
-           WHERE id = $1 AND organization_id = $2
-           RETURNING id, title, composer, arranger, publisher, lyricist, society_number, archive_location, instrumentation, difficulty, duration_seconds,
-                     source, notes, tags, created_at, updated_at"#,
+    db::update_work(
+        &state.pool,
         work_id,
         user.organization_id,
-        w.title,
-        w.composer,
-        w.arranger,
-        w.publisher,
-        w.instrumentation,
+        &w.title,
+        w.composer.as_deref(),
+        w.arranger.as_deref(),
+        w.publisher.as_deref(),
+        w.instrumentation.as_deref(),
         w.difficulty,
         w.duration_seconds,
-        w.source,
-        w.notes,
+        w.source.as_deref(),
+        w.notes.as_deref(),
         &w.tags,
-        w.lyricist,
-        w.society_number,
-        w.archive_location
+        w.lyricist.as_deref(),
+        w.society_number.as_deref(),
+        w.archive_location.as_deref(),
     )
-    .fetch_optional(&state.pool)
-    .await?
+    .await
+    .map(|row| row.map(Work::from))?
     .ok_or(AppError::NotFound)
 }
 
 pub async fn delete_work(state: &App, user: &CurrentUser, work_id: Uuid) -> AppResult<()> {
     user.require(user.is_staff())?;
     let mut tx = state.pool.begin().await?;
-    let sources = sqlx::query_scalar!(
-        "SELECT s.id FROM source_files s JOIN works w ON w.id = s.work_id WHERE w.id = $1 AND w.organization_id = $2",
-        work_id,
-        user.organization_id
-    )
-    .fetch_all(&mut *tx)
-    .await?;
-    let parts = sqlx::query_scalar!("SELECT id FROM parts WHERE work_id = $1", work_id).fetch_all(&mut *tx).await?;
-    let recordings =
-        sqlx::query_scalar!("SELECT id FROM recordings WHERE work_id = $1", work_id).fetch_all(&mut *tx).await?;
-    let deleted =
-        sqlx::query!("DELETE FROM works WHERE id = $1 AND organization_id = $2", work_id, user.organization_id)
-            .execute(&mut *tx)
-            .await?;
+    let sources = db::delete_work_select_source_files(&mut *tx, work_id, user.organization_id).await?;
+    let parts = db::delete_work_select_parts(&mut *tx, work_id).await?;
+    let recordings = db::delete_work_select_recordings(&mut *tx, work_id).await?;
+    let deleted = db::delete_work_delete_works(&mut *tx, work_id, user.organization_id).await?;
     if deleted.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
@@ -478,11 +390,7 @@ pub async fn upload_source(
     let bytes = upload.bytes;
 
     let sha256 = hex::encode(Sha256::digest(&bytes));
-    if let Some(existing) =
-        sqlx::query_scalar!("SELECT file_name FROM source_files WHERE work_id = $1 AND sha256 = $2", work_id, sha256)
-            .fetch_optional(&state.pool)
-            .await?
-    {
+    if let Some(existing) = db::upload_source_select_source_files(&state.pool, work_id, &sha256).await? {
         return Err(AppError::Conflict(format!("this file is already uploaded as “{existing}”")));
     }
 
@@ -496,21 +404,18 @@ pub async fn upload_source(
     let key = source_key(user.organization_id, id);
     state.store.put(&key, PutPayload::from_bytes(bytes.clone())).await?;
 
-    let inserted = sqlx::query_as!(
-        SourceFile,
-        r#"INSERT INTO source_files (id, work_id, file_name, size, sha256, page_count, storage_key)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING id, work_id, file_name, size, sha256, page_count, created_at"#,
+    let inserted = db::upload_source_insert_source_files(
+        &state.pool,
         id,
         work_id,
-        file_name,
+        &file_name,
         bytes.len() as i64,
-        sha256,
+        &sha256,
         page_count as i32,
-        key.as_ref()
+        key.as_ref(),
     )
-    .fetch_one(&state.pool)
-    .await;
+    .await
+    .map(SourceFile::from);
     match inserted {
         Ok(source) => Ok(source),
         Err(error) => {
@@ -523,14 +428,8 @@ pub async fn upload_source(
 pub async fn delete_source(state: &App, user: &CurrentUser, source_id: Uuid) -> AppResult<()> {
     user.require(user.is_staff())?;
     let mut tx = state.pool.begin().await?;
-    let parts = sqlx::query_scalar!("SELECT id FROM parts WHERE source_id = $1", source_id).fetch_all(&mut *tx).await?;
-    let deleted = sqlx::query!(
-        "DELETE FROM source_files s USING works w WHERE s.id = $1 AND w.id = s.work_id AND w.organization_id = $2",
-        source_id,
-        user.organization_id
-    )
-    .execute(&mut *tx)
-    .await?;
+    let parts = db::delete_source_select_parts(&mut *tx, source_id).await?;
+    let deleted = db::delete_source_delete_source_files(&mut *tx, source_id, user.organization_id).await?;
     if deleted.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
@@ -547,15 +446,7 @@ pub async fn delete_source(state: &App, user: &CurrentUser, source_id: Uuid) -> 
 /// A source PDF, to download.
 pub async fn source_file(state: &App, user: &CurrentUser, source_id: Uuid) -> AppResult<PdfFile> {
     user.require(user.reads_library())?;
-    let row = sqlx::query!(
-        "SELECT s.file_name FROM source_files s JOIN works w ON w.id = s.work_id
-         WHERE s.id = $1 AND w.organization_id = $2",
-        source_id,
-        user.organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    let row = db::source_file(&state.pool, source_id, user.organization_id).await?.ok_or(AppError::NotFound)?;
     open_pdf(state, &source_key(user.organization_id, source_id), &row.file_name).await
 }
 
@@ -609,26 +500,14 @@ async fn render_part(
         return Err(AppError::Invalid("voice must be at least 1".into()));
     }
     if let Some(instrument) = input.instrument_id {
-        let known = sqlx::query_scalar!(
-            r#"SELECT EXISTS (SELECT 1 FROM instruments
-                              WHERE id = $1 AND organization_id = $2) AS "known!""#,
-            instrument,
-            user.organization_id
-        )
-        .fetch_one(&state.pool)
-        .await?;
+        let known = db::render_part_select_instruments(&state.pool, instrument, user.organization_id).await?;
         if !known {
             return Err(AppError::Invalid("unknown instrument".into()));
         }
     }
-    let page_count = sqlx::query_scalar!(
-        "SELECT page_count FROM source_files WHERE id = $1 AND work_id = $2",
-        input.source_id,
-        work_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or_else(|| AppError::Invalid("sourceId is not a source file of this work".into()))?;
+    let page_count = db::render_part_select_source_files(&state.pool, input.source_id, work_id)
+        .await?
+        .ok_or_else(|| AppError::Invalid("sourceId is not a source file of this work".into()))?;
     if input.pages.is_empty() {
         return Err(AppError::Invalid("pages must not be empty".into()));
     }
@@ -655,23 +534,19 @@ pub async fn create_part(state: &App, user: &CurrentUser, work_id: Uuid, mut inp
     let id = Uuid::new_v4();
     render_part(state, user, work_id, id, &mut input).await?;
     let key = part_key(user.organization_id, id);
-    let inserted = sqlx::query_as!(
-        Part,
-        r#"INSERT INTO parts (id, work_id, source_id, label, instrument_id, voice, pages, storage_key)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           RETURNING id, work_id, source_id, label, instrument_id, voice, pages,
-                     cardinality(pages) AS "page_count!", created_at, updated_at"#,
+    let inserted = db::create_part(
+        &state.pool,
         id,
         work_id,
         input.source_id,
-        input.label,
+        &input.label,
         input.instrument_id,
         input.voice,
         &input.pages,
-        key.as_ref()
+        key.as_ref(),
     )
-    .fetch_one(&state.pool)
-    .await;
+    .await
+    .map(Part::from);
     match inserted {
         Ok(part) => {
             let recipients = crate::notify::who_sees_part(state, part.id, user.id).await;
@@ -694,42 +569,31 @@ pub async fn create_part(state: &App, user: &CurrentUser, work_id: Uuid, mut inp
 }
 
 async fn find_part_work(state: &App, user: &CurrentUser, part_id: Uuid) -> AppResult<Uuid> {
-    sqlx::query_scalar!(
-        "SELECT p.work_id FROM parts p JOIN works w ON w.id = p.work_id WHERE p.id = $1 AND w.organization_id = $2",
-        part_id,
-        user.organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)
+    db::find_part_work(&state.pool, part_id, user.organization_id).await?.ok_or(AppError::NotFound)
 }
 
 pub async fn update_part(state: &App, user: &CurrentUser, part_id: Uuid, mut input: PartInput) -> AppResult<Part> {
     user.require(user.is_staff())?;
     let work_id = find_part_work(state, user, part_id).await?;
     render_part(state, user, work_id, part_id, &mut input).await?;
-    let part = sqlx::query_as!(
-        Part,
-        r#"UPDATE parts SET source_id = $2, label = $3, instrument_id = $4, voice = $5, pages = $6, updated_at = now()
-           WHERE id = $1
-           RETURNING id, work_id, source_id, label, instrument_id, voice, pages,
-                     cardinality(pages) AS "page_count!", created_at, updated_at"#,
+    let part = db::update_part(
+        &state.pool,
         part_id,
         input.source_id,
-        input.label,
+        &input.label,
         input.instrument_id,
         input.voice,
-        &input.pages
+        &input.pages,
     )
-    .fetch_one(&state.pool)
-    .await?;
+    .await
+    .map(Part::from)?;
     Ok(part)
 }
 
 pub async fn delete_part(state: &App, user: &CurrentUser, part_id: Uuid) -> AppResult<()> {
     user.require(user.is_staff())?;
     find_part_work(state, user, part_id).await?;
-    sqlx::query!("DELETE FROM parts WHERE id = $1", part_id).execute(&state.pool).await?;
+    db::delete_part(&state.pool, part_id).await?;
     remove_objects(state, [part_key(user.organization_id, part_id)]).await;
     Ok(())
 }
@@ -739,15 +603,7 @@ pub async fn part_file(state: &App, user: &CurrentUser, part_id: Uuid) -> AppRes
     if !may_see_part(state, user, part_id).await? {
         return Err(AppError::NotFound);
     }
-    let row = sqlx::query!(
-        "SELECT p.label, w.title FROM parts p JOIN works w ON w.id = p.work_id
-         WHERE p.id = $1 AND w.organization_id = $2",
-        part_id,
-        user.organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    let row = db::part_file(&state.pool, part_id, user.organization_id).await?.ok_or(AppError::NotFound)?;
     let file_name = clean_file_name(&format!("{} – {}.pdf", row.title, row.label));
     open_pdf(state, &part_key(user.organization_id, part_id), &file_name).await
 }
@@ -801,6 +657,60 @@ fn pdf_error(error: PdfError) -> AppError {
     match error {
         PdfError::Write(_) => AppError::Internal(error.into()),
         _ => AppError::Invalid(error.to_string()),
+    }
+}
+
+impl From<db::WorkRow> for Work {
+    fn from(row: db::WorkRow) -> Self {
+        Work {
+            id: row.id,
+            title: row.title,
+            composer: row.composer,
+            arranger: row.arranger,
+            publisher: row.publisher,
+            lyricist: row.lyricist,
+            society_number: row.society_number,
+            archive_location: row.archive_location,
+            instrumentation: row.instrumentation,
+            difficulty: row.difficulty,
+            duration_seconds: row.duration_seconds,
+            source: row.source,
+            notes: row.notes,
+            tags: row.tags,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }
+    }
+}
+
+impl From<db::SourcefileRow> for SourceFile {
+    fn from(row: db::SourcefileRow) -> Self {
+        SourceFile {
+            id: row.id,
+            work_id: row.work_id,
+            file_name: row.file_name,
+            size: row.size,
+            sha256: row.sha256,
+            page_count: row.page_count,
+            created_at: row.created_at,
+        }
+    }
+}
+
+impl From<db::PartRow> for Part {
+    fn from(row: db::PartRow) -> Self {
+        Part {
+            id: row.id,
+            work_id: row.work_id,
+            source_id: row.source_id,
+            label: row.label,
+            instrument_id: row.instrument_id,
+            voice: row.voice,
+            pages: row.pages,
+            page_count: row.page_count,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }
     }
 }
 

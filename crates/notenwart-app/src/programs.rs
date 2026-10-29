@@ -11,6 +11,7 @@ use crate::App;
 use crate::auth::{CurrentUser, check_name};
 use crate::ensembles::{check_visible, require_manage};
 use crate::error::{AppError, AppResult};
+use notenwart_store::programs as db;
 
 const MAX_WORKS: usize = 200;
 
@@ -105,34 +106,16 @@ pub struct Program {
 
 /// The programmes of these ensembles, by ensemble; each list by date, undated last.
 pub async fn programs_for(state: &App, ensembles: &[Uuid]) -> AppResult<HashMap<Uuid, Vec<Program>>> {
-    let rows = sqlx::query!(
-        r#"SELECT id, ensemble_id, name, to_char(date, 'YYYY-MM-DD') AS date, to_char(start_time, 'HH24:MI') AS start_time,
-                  venue, notes
-           FROM programs WHERE ensemble_id = ANY($1)
-           ORDER BY date NULLS LAST, lower(name)"#,
-        ensembles
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let rows = db::programs_for_select_programs(&state.pool, ensembles).await?;
     let ids: Vec<Uuid> = rows.iter().map(|r| r.id).collect();
     let mut items: HashMap<Uuid, Vec<(i32, ProgramItem)>> = HashMap::new();
-    for w in
-        sqlx::query!("SELECT program_id, work_id, position, note FROM program_works WHERE program_id = ANY($1)", &ids)
-            .fetch_all(&state.pool)
-            .await?
-    {
+    for w in db::programs_for_select_program_works(&state.pool, &ids).await? {
         items
             .entry(w.program_id)
             .or_default()
             .push((w.position, ProgramItem::Work { work_id: w.work_id, note: w.note }));
     }
-    for b in sqlx::query!(
-        "SELECT program_id, position, label, duration_seconds, note FROM program_breaks WHERE program_id = ANY($1)",
-        &ids
-    )
-    .fetch_all(&state.pool)
-    .await?
-    {
+    for b in db::programs_for_select_program_breaks(&state.pool, &ids).await? {
         items.entry(b.program_id).or_default().push((
             b.position,
             ProgramItem::Break { label: b.label, duration_seconds: b.duration_seconds, note: b.note },
@@ -166,15 +149,7 @@ pub async fn programs_for(state: &App, ensembles: &[Uuid]) -> AppResult<HashMap<
 }
 
 async fn find(state: &App, user: &CurrentUser, program_id: Uuid) -> AppResult<Program> {
-    let ensemble_id = sqlx::query_scalar!(
-        "SELECT p.ensemble_id FROM programs p JOIN ensembles e ON e.id = p.ensemble_id
-         WHERE p.id = $1 AND e.organization_id = $2",
-        program_id,
-        user.organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    let ensemble_id = db::find(&state.pool, program_id, user.organization_id).await?.ok_or(AppError::NotFound)?;
     check_visible(state, user, ensemble_id).await?;
     programs_for(state, &[ensemble_id])
         .await?
@@ -188,12 +163,7 @@ fn notify_program(state: &App, user: &CurrentUser, program: &Program) {
     let (state, by, org) = (state.clone(), user.id, user.organization_id);
     let (ensemble_id, name) = (program.ensemble_id, program.name.clone());
     tokio::spawn(async move {
-        let ensemble = sqlx::query_scalar!("SELECT name FROM ensembles WHERE id = $1", ensemble_id)
-            .fetch_optional(&state.pool)
-            .await
-            .ok()
-            .flatten()
-            .unwrap_or_default();
+        let ensemble = db::notify_program(&state.pool, ensemble_id).await.ok().flatten().unwrap_or_default();
         let members = crate::notify::ensemble_members(&state, ensemble_id, by).await;
         crate::notify::notify(
             &state,
@@ -210,17 +180,15 @@ fn notify_program(state: &App, user: &CurrentUser, program: &Program) {
 pub async fn create(state: &App, user: &CurrentUser, ensemble_id: Uuid, input: ProgramInput) -> AppResult<Program> {
     require_manage(state, user, ensemble_id).await?;
     let d = input.normalize()?;
-    let id = sqlx::query_scalar!(
-        "INSERT INTO programs (ensemble_id, name, date, start_time, venue, notes)
-         VALUES ($1, $2, $3::text::date, $4::text::time, $5, $6) RETURNING id",
+    let id = db::create(
+        &state.pool,
         ensemble_id,
-        d.name,
-        d.date,
-        d.start_time,
-        d.venue,
-        d.notes
+        &d.name,
+        d.date.as_deref(),
+        d.start_time.as_deref(),
+        d.venue.as_deref(),
+        d.notes.as_deref(),
     )
-    .fetch_one(&state.pool)
     .await?;
     let program = find(state, user, id).await?;
     notify_program(state, user, &program);
@@ -231,17 +199,15 @@ pub async fn update(state: &App, user: &CurrentUser, program_id: Uuid, input: Pr
     let program = find(state, user, program_id).await?;
     require_manage(state, user, program.ensemble_id).await?;
     let d = input.normalize()?;
-    sqlx::query!(
-        "UPDATE programs SET name = $2, date = $3::text::date, start_time = $4::text::time, venue = $5, notes = $6
-         WHERE id = $1",
+    db::update(
+        &state.pool,
         program_id,
-        d.name,
-        d.date,
-        d.start_time,
-        d.venue,
-        d.notes
+        &d.name,
+        d.date.as_deref(),
+        d.start_time.as_deref(),
+        d.venue.as_deref(),
+        d.notes.as_deref(),
     )
-    .execute(&state.pool)
     .await?;
     let program = find(state, user, program_id).await?;
     notify_program(state, user, &program);
@@ -251,7 +217,7 @@ pub async fn update(state: &App, user: &CurrentUser, program_id: Uuid, input: Pr
 pub async fn remove(state: &App, user: &CurrentUser, program_id: Uuid) -> AppResult<()> {
     let program = find(state, user, program_id).await?;
     require_manage(state, user, program.ensemble_id).await?;
-    sqlx::query!("DELETE FROM programs WHERE id = $1", program_id).execute(&state.pool).await?;
+    db::remove(&state.pool, program_id).await?;
     Ok(())
 }
 
@@ -302,48 +268,25 @@ pub async fn set_items(state: &App, user: &CurrentUser, program_id: Uuid, input:
     if works.iter().collect::<HashSet<_>>().len() != works.len() {
         return Err(AppError::Invalid("a work appears twice".into()));
     }
-    let known = sqlx::query_scalar!(
-        r#"SELECT count(*) AS "n!" FROM works WHERE id = ANY($1) AND organization_id = $2"#,
-        &works,
-        user.organization_id
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let known = db::set_items_select_works(&state.pool, &works, user.organization_id).await?;
     if known as usize != works.len() {
         return Err(AppError::Invalid("unknown work".into()));
     }
     let mut tx = state.pool.begin().await?;
     // A programme's works are the ensemble's works.
-    let given = sqlx::query_scalar!(
-        "INSERT INTO ensemble_works (ensemble_id, work_id) SELECT $1, w FROM unnest($2::uuid[]) AS w
-         ON CONFLICT DO NOTHING RETURNING work_id",
-        program.ensemble_id,
-        &works
-    )
-    .fetch_all(&mut *tx)
-    .await?;
-    sqlx::query!("DELETE FROM program_works WHERE program_id = $1", program_id).execute(&mut *tx).await?;
-    sqlx::query!("DELETE FROM program_breaks WHERE program_id = $1", program_id).execute(&mut *tx).await?;
-    sqlx::query!(
-        "INSERT INTO program_works (program_id, work_id, position, note)
-         SELECT $1, w, p, n FROM unnest($2::uuid[], $3::int[], $4::text[]) AS t(w, p, n)",
-        program_id,
-        &works,
-        &work_positions,
-        &work_notes as &[Option<String>]
-    )
-    .execute(&mut *tx)
-    .await?;
-    sqlx::query!(
-        "INSERT INTO program_breaks (program_id, position, label, duration_seconds, note)
-         SELECT $1, p, l, d, n FROM unnest($2::int[], $3::text[], $4::int[], $5::text[]) AS t(p, l, d, n)",
+    let given = db::set_items_insert_ensemble_works(&mut *tx, program.ensemble_id, &works).await?;
+    db::set_items_delete_program_works(&mut *tx, program_id).await?;
+    db::set_items_delete_program_breaks(&mut *tx, program_id).await?;
+    db::set_items_insert_program_works(&mut *tx, program_id, &works, &work_positions, &work_notes as &[Option<String>])
+        .await?;
+    db::set_items_insert_program_breaks(
+        &mut *tx,
         program_id,
         &break_positions,
         &labels,
         &durations as &[Option<i32>],
-        &break_notes as &[Option<String>]
+        &break_notes as &[Option<String>],
     )
-    .execute(&mut *tx)
     .await?;
     tx.commit().await?;
     if !given.is_empty() {
@@ -369,17 +312,9 @@ pub struct EnsemblePart {
 
 pub async fn ensemble_parts(state: &App, user: &CurrentUser, ensemble_id: Uuid) -> AppResult<Vec<EnsemblePart>> {
     require_manage(state, user, ensemble_id).await?;
-    let parts = sqlx::query_as!(
-        EnsemblePart,
-        r#"SELECT p.id, p.label, p.instrument_id, p.voice, w.id AS work_id, w.title AS work_title
-           FROM ensemble_works ew JOIN works w ON w.id = ew.work_id JOIN parts p ON p.work_id = w.id
-           LEFT JOIN instruments i ON i.id = p.instrument_id
-           WHERE ew.ensemble_id = $1
-           ORDER BY lower(w.title), w.id, i.sort NULLS FIRST, p.voice NULLS FIRST, lower(p.label)"#,
-        ensemble_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let parts = db::ensemble_parts(&state.pool, ensemble_id)
+        .await
+        .map(|rows| rows.into_iter().map(EnsemblePart::from).collect::<Vec<_>>())?;
     Ok(parts)
 }
 
@@ -395,17 +330,8 @@ pub struct Grant {
 
 pub async fn grants(state: &App, user: &CurrentUser, ensemble_id: Uuid) -> AppResult<Vec<Grant>> {
     require_manage(state, user, ensemble_id).await?;
-    let grants = sqlx::query_as!(
-        Grant,
-        r#"SELECT g.part_id, g.user_id, p.label, w.title AS work_title, u.display_name AS user_name
-           FROM part_grants g JOIN parts p ON p.id = g.part_id JOIN works w ON w.id = p.work_id
-           JOIN users u ON u.id = g.user_id
-           WHERE g.ensemble_id = $1
-           ORDER BY lower(u.display_name), lower(w.title), lower(p.label)"#,
-        ensemble_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let grants =
+        db::grants(&state.pool, ensemble_id).await.map(|rows| rows.into_iter().map(Grant::from).collect::<Vec<_>>())?;
     Ok(grants)
 }
 
@@ -417,37 +343,15 @@ pub async fn grant(
     member_id: Uuid,
 ) -> AppResult<()> {
     require_manage(state, user, ensemble_id).await?;
-    let part_in_ensemble = sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM parts p JOIN ensemble_works ew ON ew.work_id = p.work_id
-                          WHERE p.id = $1 AND ew.ensemble_id = $2) AS "x!""#,
-        part_id,
-        ensemble_id
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let part_in_ensemble = db::grant_select_parts(&state.pool, part_id, ensemble_id).await?;
     if !part_in_ensemble {
         return Err(AppError::Invalid("the part's work is not one of the ensemble's works".into()));
     }
-    let member = sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM ensemble_members WHERE ensemble_id = $1 AND user_id = $2) AS "x!""#,
-        ensemble_id,
-        member_id
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let member = db::grant_select_ensemble_members(&state.pool, ensemble_id, member_id).await?;
     if !member {
         return Err(AppError::Invalid("only members of the ensemble can be granted parts".into()));
     }
-    let granted = sqlx::query!(
-        "INSERT INTO part_grants (ensemble_id, user_id, part_id, granted_by) VALUES ($1, $2, $3, $4)
-         ON CONFLICT DO NOTHING",
-        ensemble_id,
-        member_id,
-        part_id,
-        user.actor()
-    )
-    .execute(&state.pool)
-    .await?;
+    let granted = db::grant_insert_part_grants(&state.pool, ensemble_id, member_id, part_id, user.actor()).await?;
     if granted.rows_affected() > 0
         && let Some((part, work)) = crate::notify::part_names(state, part_id).await
     {
@@ -471,16 +375,34 @@ pub async fn revoke(
     member_id: Uuid,
 ) -> AppResult<()> {
     require_manage(state, user, ensemble_id).await?;
-    let deleted = sqlx::query!(
-        "DELETE FROM part_grants WHERE ensemble_id = $1 AND part_id = $2 AND user_id = $3",
-        ensemble_id,
-        part_id,
-        member_id
-    )
-    .execute(&state.pool)
-    .await?;
+    let deleted = db::revoke(&state.pool, ensemble_id, part_id, member_id).await?;
     if deleted.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
     Ok(())
+}
+
+impl From<db::EnsemblepartRow> for EnsemblePart {
+    fn from(row: db::EnsemblepartRow) -> Self {
+        EnsemblePart {
+            id: row.id,
+            label: row.label,
+            instrument_id: row.instrument_id,
+            voice: row.voice,
+            work_id: row.work_id,
+            work_title: row.work_title,
+        }
+    }
+}
+
+impl From<db::GrantRow> for Grant {
+    fn from(row: db::GrantRow) -> Self {
+        Grant {
+            part_id: row.part_id,
+            user_id: row.user_id,
+            label: row.label,
+            work_title: row.work_title,
+            user_name: row.user_name,
+        }
+    }
 }

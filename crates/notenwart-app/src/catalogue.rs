@@ -12,6 +12,7 @@ use crate::App;
 use crate::auth::CurrentUser;
 use crate::error::{AppError, AppResult, unique_violation};
 use crate::mail::Language;
+use notenwart_store::catalogue as db;
 
 // ---- the copy of the built-in catalogue ----
 
@@ -75,13 +76,8 @@ const GERMAN: [(&str, &str); 39] = [
 pub async fn ensure(pool: &sqlx::PgPool, organization_id: Uuid, language: Language) -> sqlx::Result<()> {
     let mut tx = pool.begin().await?;
     // One server start at a time.
-    sqlx::query!("SELECT id FROM organizations WHERE id = $1 FOR UPDATE", organization_id).fetch_one(&mut *tx).await?;
-    let has = sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM instrument_families WHERE organization_id = $1) AS "has!""#,
-        organization_id
-    )
-    .fetch_one(&mut *tx)
-    .await?;
+    db::ensure_select_organizations(&mut *tx, organization_id).await?;
+    let has = db::ensure_select_instrument_families(&mut *tx, organization_id).await?;
     if has {
         return Ok(());
     }
@@ -93,23 +89,11 @@ pub async fn ensure(pool: &sqlx::PgPool, organization_id: Uuid, language: Langua
             Language::En => english,
             Language::De => deutsch,
         };
-        let id = sqlx::query_scalar!(
-            "INSERT INTO instrument_families (organization_id, name, sort) VALUES ($1, $2, $3) RETURNING id",
-            organization_id,
-            name,
-            (sort as i32 + 1) * 10
-        )
-        .fetch_one(&mut *tx)
-        .await?;
+        let id = db::ensure_insert_instrument_families(&mut *tx, organization_id, name, (sort as i32 + 1) * 10).await?;
         families.insert(key, id);
     }
 
-    let template = sqlx::query!(
-        r#"SELECT id, name, family::text AS "family!", transposition, aliases, sort
-           FROM instruments WHERE organization_id IS NULL ORDER BY sort"#
-    )
-    .fetch_all(&mut *tx)
-    .await?;
+    let template = db::ensure_select_instruments(&mut *tx).await?;
     for built_in in template {
         let (name, mut aliases) = match (language, german.get(built_in.name.as_str())) {
             // The English name stays findable (file names, imports) as an alias.
@@ -123,36 +107,18 @@ pub async fn ensure(pool: &sqlx::PgPool, organization_id: Uuid, language: Langua
                 aliases.push(alias);
             }
         }
-        let copy = sqlx::query_scalar!(
-            "INSERT INTO instruments (organization_id, name, family_id, transposition, aliases, sort)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+        let copy = db::ensure_insert_instruments(
+            &mut *tx,
             organization_id,
-            name,
+            &name,
             families[built_in.family.as_str()],
-            transposition(language, built_in.transposition.as_deref()),
+            (transposition(language, built_in.transposition.as_deref())).as_deref(),
             &aliases,
-            built_in.sort
+            built_in.sort,
         )
-        .fetch_one(&mut *tx)
         .await?;
-        sqlx::query!(
-            "UPDATE parts SET instrument_id = $1
-             WHERE instrument_id = $2 AND work_id IN (SELECT id FROM works WHERE organization_id = $3)",
-            copy,
-            built_in.id,
-            organization_id
-        )
-        .execute(&mut *tx)
-        .await?;
-        sqlx::query!(
-            "UPDATE ensemble_member_parts SET instrument_id = $1
-             WHERE instrument_id = $2 AND ensemble_id IN (SELECT id FROM ensembles WHERE organization_id = $3)",
-            copy,
-            built_in.id,
-            organization_id
-        )
-        .execute(&mut *tx)
-        .await?;
+        db::ensure_update_parts(&mut *tx, copy, built_in.id, organization_id).await?;
+        db::ensure_update_ensemble_member_parts(&mut *tx, copy, built_in.id, organization_id).await?;
     }
     tx.commit().await
 }
@@ -197,75 +163,40 @@ fn clean_name(name: &str) -> AppResult<String> {
 }
 
 pub async fn list_families(state: &App, user: &CurrentUser) -> AppResult<Vec<Family>> {
-    let families = sqlx::query_as!(
-        Family,
-        r#"SELECT f.id, f.name, f.sort,
-                  (SELECT count(*) FROM instruments i WHERE i.family_id = f.id) AS "instrument_count!"
-           FROM instrument_families f WHERE f.organization_id = $1
-           ORDER BY f.sort, lower(f.name)"#,
-        user.organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let families = db::list_families(&state.pool, user.organization_id)
+        .await
+        .map(|rows| rows.into_iter().map(Family::from).collect::<Vec<_>>())?;
     Ok(families)
 }
 
 pub async fn create_family(state: &App, user: &CurrentUser, input: FamilyInput) -> AppResult<Family> {
     user.require(user.is_staff())?;
     let name = clean_name(&input.name)?;
-    let family = sqlx::query_as!(
-        Family,
-        r#"INSERT INTO instrument_families (organization_id, name, sort)
-           VALUES ($1, $2, coalesce($3, (SELECT coalesce(max(sort), 0) + 10 FROM instrument_families
-                                         WHERE organization_id = $1)))
-           RETURNING id, name, sort, 0::bigint AS "instrument_count!""#,
-        user.organization_id,
-        name,
-        input.sort
-    )
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| unique_violation(e, "a family with this name exists"))?;
+    let family = db::create_family(&state.pool, user.organization_id, &name, input.sort)
+        .await
+        .map(Family::from)
+        .map_err(|e| unique_violation(e, "a family with this name exists"))?;
     Ok(family)
 }
 
 pub async fn update_family(state: &App, user: &CurrentUser, family_id: Uuid, input: FamilyInput) -> AppResult<Family> {
     user.require(user.is_staff())?;
     let name = clean_name(&input.name)?;
-    let family = sqlx::query_as!(
-        Family,
-        r#"UPDATE instrument_families f SET name = $3, sort = coalesce($4, f.sort)
-           WHERE f.id = $1 AND f.organization_id = $2
-           RETURNING f.id, f.name, f.sort,
-                     (SELECT count(*) FROM instruments i WHERE i.family_id = f.id) AS "instrument_count!""#,
-        family_id,
-        user.organization_id,
-        name,
-        input.sort
-    )
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(|e| unique_violation(e, "a family with this name exists"))?
-    .ok_or(AppError::NotFound)?;
+    let family = db::update_family(&state.pool, family_id, user.organization_id, &name, input.sort)
+        .await
+        .map(|row| row.map(Family::from))
+        .map_err(|e| unique_violation(e, "a family with this name exists"))?
+        .ok_or(AppError::NotFound)?;
     Ok(family)
 }
 
 pub async fn delete_family(state: &App, user: &CurrentUser, family_id: Uuid) -> AppResult<()> {
     user.require(user.is_staff())?;
-    let used =
-        sqlx::query_scalar!(r#"SELECT EXISTS (SELECT 1 FROM instruments WHERE family_id = $1) AS "used!""#, family_id)
-            .fetch_one(&state.pool)
-            .await?;
+    let used = db::delete_family_select_instruments(&state.pool, family_id).await?;
     if used {
         return Err(AppError::Conflict("the family still has instruments".into()));
     }
-    let deleted = sqlx::query!(
-        "DELETE FROM instrument_families WHERE id = $1 AND organization_id = $2",
-        family_id,
-        user.organization_id
-    )
-    .execute(&state.pool)
-    .await?;
+    let deleted = db::delete_family_delete_instrument_families(&state.pool, family_id, user.organization_id).await?;
     if deleted.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
@@ -330,45 +261,21 @@ impl InstrumentInput {
 }
 
 async fn fetch_instrument(pool: &sqlx::PgPool, organization_id: Uuid, id: Uuid) -> AppResult<Instrument> {
-    sqlx::query_as!(
-        Instrument,
-        r#"SELECT i.id, i.name, f.id AS family_id, f.name AS family, i.transposition, i.aliases, i.sort,
-                  (SELECT count(*) FROM parts p WHERE p.instrument_id = i.id)
-                  + (SELECT count(*) FROM ensemble_member_parts m WHERE m.instrument_id = i.id) AS "usage!"
-           FROM instruments i JOIN instrument_families f ON f.id = i.family_id
-           WHERE i.id = $1 AND i.organization_id = $2"#,
-        id,
-        organization_id
-    )
-    .fetch_optional(pool)
-    .await?
-    .ok_or(AppError::NotFound)
+    db::fetch_instrument(pool, id, organization_id)
+        .await
+        .map(|row| row.map(Instrument::from))?
+        .ok_or(AppError::NotFound)
 }
 
 pub async fn list_instruments(state: &App, user: &CurrentUser) -> AppResult<Vec<Instrument>> {
-    let instruments = sqlx::query_as!(
-        Instrument,
-        r#"SELECT i.id, i.name, f.id AS family_id, f.name AS family, i.transposition, i.aliases, i.sort,
-                  (SELECT count(*) FROM parts p WHERE p.instrument_id = i.id)
-                  + (SELECT count(*) FROM ensemble_member_parts m WHERE m.instrument_id = i.id) AS "usage!"
-           FROM instruments i JOIN instrument_families f ON f.id = i.family_id
-           WHERE i.organization_id = $1
-           ORDER BY f.sort, lower(f.name), i.sort, lower(i.name)"#,
-        user.organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let instruments = db::list_instruments(&state.pool, user.organization_id)
+        .await
+        .map(|rows| rows.into_iter().map(Instrument::from).collect::<Vec<_>>())?;
     Ok(instruments)
 }
 
 async fn check_family(pool: &sqlx::PgPool, organization_id: Uuid, family_id: Uuid) -> AppResult<()> {
-    let known = sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM instrument_families WHERE id = $1 AND organization_id = $2) AS "known!""#,
-        family_id,
-        organization_id
-    )
-    .fetch_one(pool)
-    .await?;
+    let known = db::check_family(pool, family_id, organization_id).await?;
     if !known {
         return Err(AppError::Invalid("unknown family".into()));
     }
@@ -379,19 +286,15 @@ pub async fn create_instrument(state: &App, user: &CurrentUser, input: Instrumen
     user.require(user.is_staff())?;
     let input = input.clean()?;
     check_family(&state.pool, user.organization_id, input.family_id).await?;
-    let id = sqlx::query_scalar!(
-        "INSERT INTO instruments (organization_id, name, family_id, transposition, aliases, sort)
-         VALUES ($1, $2, $3, $4, $5, coalesce($6, (SELECT coalesce(max(sort), 0) + 1 FROM instruments
-                                                   WHERE family_id = $3)))
-         RETURNING id",
+    let id = db::create_instrument(
+        &state.pool,
         user.organization_id,
-        input.name,
+        &input.name,
         input.family_id,
-        input.transposition,
+        input.transposition.as_deref(),
         &input.aliases,
-        input.sort
+        input.sort,
     )
-    .fetch_one(&state.pool)
     .await
     .map_err(|e| unique_violation(e, "an instrument with this name exists"))?;
     fetch_instrument(&state.pool, user.organization_id, id).await
@@ -406,18 +309,16 @@ pub async fn update_instrument(
     user.require(user.is_staff())?;
     let input = input.clean()?;
     check_family(&state.pool, user.organization_id, input.family_id).await?;
-    let updated = sqlx::query!(
-        "UPDATE instruments SET name = $3, family_id = $4, transposition = $5, aliases = $6, sort = coalesce($7, sort)
-         WHERE id = $1 AND organization_id = $2",
+    let updated = db::update_instrument(
+        &state.pool,
         instrument_id,
         user.organization_id,
-        input.name,
+        &input.name,
         input.family_id,
-        input.transposition,
+        input.transposition.as_deref(),
         &input.aliases,
-        input.sort
+        input.sort,
     )
-    .execute(&state.pool)
     .await
     .map_err(|e| unique_violation(e, "an instrument with this name exists"))?;
     if updated.rows_affected() == 0 {
@@ -433,7 +334,7 @@ pub async fn delete_instrument(state: &App, user: &CurrentUser, instrument_id: U
     if instrument.usage > 0 {
         return Err(AppError::Conflict("the instrument is still used by parts or members".into()));
     }
-    sqlx::query!("DELETE FROM instruments WHERE id = $1", instrument_id).execute(&state.pool).await?;
+    db::delete_instrument(&state.pool, instrument_id).await?;
     Ok(())
 }
 
@@ -467,31 +368,34 @@ pub async fn merge_instrument(
     }
     aliases.truncate(30);
     let mut tx = state.pool.begin().await?;
-    sqlx::query!("UPDATE parts SET instrument_id = $2 WHERE instrument_id = $1", instrument_id, input.into)
-        .execute(&mut *tx)
-        .await?;
+    db::merge_instrument_update_parts(&mut *tx, instrument_id, input.into).await?;
     // Members playing both keep one assignment per part number.
-    sqlx::query!(
-        "DELETE FROM ensemble_member_parts a USING ensemble_member_parts b
-         WHERE a.instrument_id = $1 AND b.instrument_id = $2 AND a.ensemble_id = b.ensemble_id
-           AND a.user_id = b.user_id AND coalesce(a.voice, 0) = coalesce(b.voice, 0)",
-        instrument_id,
-        input.into
-    )
-    .execute(&mut *tx)
-    .await?;
-    sqlx::query!(
-        "UPDATE ensemble_member_parts SET instrument_id = $2 WHERE instrument_id = $1",
-        instrument_id,
-        input.into
-    )
-    .execute(&mut *tx)
-    .await?;
-    sqlx::query!("UPDATE recordings SET instrument_id = $2 WHERE instrument_id = $1", instrument_id, input.into)
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query!("DELETE FROM instruments WHERE id = $1", instrument_id).execute(&mut *tx).await?;
-    sqlx::query!("UPDATE instruments SET aliases = $2 WHERE id = $1", input.into, &aliases).execute(&mut *tx).await?;
+    db::merge_instrument_delete_ensemble_member_parts(&mut *tx, instrument_id, input.into).await?;
+    db::merge_instrument_update_ensemble_member_parts(&mut *tx, instrument_id, input.into).await?;
+    db::merge_instrument_update_recordings(&mut *tx, instrument_id, input.into).await?;
+    db::merge_instrument_delete_instruments(&mut *tx, instrument_id).await?;
+    db::merge_instrument_update_instruments(&mut *tx, input.into, &aliases).await?;
     tx.commit().await?;
     fetch_instrument(&state.pool, user.organization_id, input.into).await
+}
+
+impl From<db::FamilyRow> for Family {
+    fn from(row: db::FamilyRow) -> Self {
+        Family { id: row.id, name: row.name, sort: row.sort, instrument_count: row.instrument_count }
+    }
+}
+
+impl From<db::InstrumentRow> for Instrument {
+    fn from(row: db::InstrumentRow) -> Self {
+        Instrument {
+            id: row.id,
+            name: row.name,
+            family_id: row.family_id,
+            family: row.family,
+            transposition: row.transposition,
+            aliases: row.aliases,
+            sort: row.sort,
+            usage: row.usage,
+        }
+    }
 }

@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::App;
 use crate::auth::{CurrentUser, INVITATION_DAYS, Role, check_name, create_link_token, normalize_email};
 use crate::error::{AppError, AppResult};
+use notenwart_store::import as db;
 
 const MAX_ROWS: usize = 2000;
 
@@ -106,29 +107,15 @@ pub async fn import(state: &App, admin: &CurrentUser, input: ImportInput) -> App
     let org = admin.organization_id;
 
     // Everything rows can refer to, loaded once.
-    let users: HashMap<String, (Uuid, bool)> = sqlx::query!(
-        r#"SELECT u.id, lower(u.email) AS "email!",
-                  EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = u.id AND m.organization_id = $1) AS "member!"
-           FROM users u"#,
-        org
-    )
-    .fetch_all(&state.pool)
-    .await?
-    .into_iter()
-    .map(|r| (r.email, (r.id, r.member)))
-    .collect();
-    let ensembles: HashMap<String, Uuid> =
-        sqlx::query!("SELECT id, lower(name) AS \"name!\" FROM ensembles WHERE organization_id = $1", org)
-            .fetch_all(&state.pool)
-            .await?
-            .into_iter()
-            .map(|r| (r.name, r.id))
-            .collect();
-    let mut instruments: HashMap<String, Uuid> = HashMap::new();
-    for row in sqlx::query!("SELECT id, name, aliases FROM instruments WHERE organization_id = $1 ORDER BY sort", org)
-        .fetch_all(&state.pool)
+    let users: HashMap<String, (Uuid, bool)> = db::import_select_memberships(&state.pool, org)
         .await?
-    {
+        .into_iter()
+        .map(|r| (r.email, (r.id, r.member)))
+        .collect();
+    let ensembles: HashMap<String, Uuid> =
+        db::import_select_ensembles(&state.pool, org).await?.into_iter().map(|r| (r.name, r.id)).collect();
+    let mut instruments: HashMap<String, Uuid> = HashMap::new();
+    for row in db::import_select_instruments(&state.pool, org).await? {
         for key in std::iter::once(row.name).chain(row.aliases) {
             instruments.entry(key.trim().to_lowercase()).or_insert(row.id);
         }
@@ -221,34 +208,15 @@ pub async fn import(state: &App, admin: &CurrentUser, input: ImportInput) -> App
     let mut user_ids: HashMap<String, Uuid> = users.iter().map(|(e, (id, _))| (e.clone(), *id)).collect();
     let mut ensemble_ids = ensembles.clone();
     for name in &ensembles_created {
-        let id = sqlx::query_scalar!(
-            "INSERT INTO ensembles (organization_id, name) VALUES ($1, $2) RETURNING id",
-            org,
-            name
-        )
-        .fetch_one(&mut *tx)
-        .await?;
+        let id = db::import_insert_ensembles(&mut *tx, org, name).await?;
         ensemble_ids.insert(name.to_lowercase(), id);
     }
     for plan in &planned {
         let user_id = match user_ids.get(&plan.email) {
             Some(id) => *id,
             None => {
-                let id = sqlx::query_scalar!(
-                    "INSERT INTO users (email, display_name) VALUES ($1, $2) RETURNING id",
-                    plan.email,
-                    plan.name
-                )
-                .fetch_one(&mut *tx)
-                .await?;
-                sqlx::query!(
-                    "INSERT INTO memberships (organization_id, user_id, role) VALUES ($1, $2, $3)",
-                    org,
-                    id,
-                    plan.role as Role
-                )
-                .execute(&mut *tx)
-                .await?;
+                let id = db::import_insert_users(&mut *tx, &plan.email, &plan.name).await?;
+                db::import_insert_memberships(&mut *tx, org, id, plan.role as Role).await?;
                 user_ids.insert(plan.email.clone(), id);
                 id
             }
@@ -256,24 +224,9 @@ pub async fn import(state: &App, admin: &CurrentUser, input: ImportInput) -> App
         let Some(ensemble) = plan.ensemble.as_ref().and_then(|e| ensemble_ids.get(e)) else {
             continue;
         };
-        sqlx::query!(
-            "INSERT INTO ensemble_members (ensemble_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-            ensemble,
-            user_id
-        )
-        .execute(&mut *tx)
-        .await?;
+        db::import_insert_ensemble_members(&mut *tx, ensemble, user_id).await?;
         if let Some(instrument) = plan.instrument {
-            sqlx::query!(
-                "INSERT INTO ensemble_member_parts (ensemble_id, user_id, instrument_id, voice)
-                 VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
-                ensemble,
-                user_id,
-                instrument,
-                plan.voice
-            )
-            .execute(&mut *tx)
-            .await?;
+            db::import_insert_ensemble_member_parts(&mut *tx, ensemble, user_id, instrument, plan.voice).await?;
         }
     }
     tx.commit().await?;

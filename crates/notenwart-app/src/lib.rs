@@ -72,5 +72,5 @@ pub struct App {
 
 /// Whether the database answers (the API's health check).
 pub async fn database_ok(app: &App) -> bool {
-    sqlx::query("SELECT 1").execute(&app.pool).await.is_ok()
+    notenwart_store::ping(&app.pool).await
 }

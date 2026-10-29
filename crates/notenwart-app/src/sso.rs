@@ -18,6 +18,7 @@ use tokio::sync::OnceCell;
 
 use crate::App;
 use crate::auth::{Session, new_token, start_session};
+use notenwart_store::sso as db;
 
 #[derive(Debug, Clone)]
 pub struct SsoConfig {
@@ -236,13 +237,7 @@ async fn sign_in(
     }
     let email =
         claims[sso.config.email_claim.as_str()].as_str().ok_or("no email in the id_token")?.trim().to_lowercase();
-    let user = sqlx::query_scalar!(
-        "SELECT u.id FROM users u JOIN memberships m ON m.user_id = u.id WHERE lower(u.email) = $1",
-        email
-    )
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(|e| format!("database: {e}"))?;
+    let user = db::sign_in(&state.pool, &email).await.map_err(|e| format!("database: {e}"))?;
     let user = user.ok_or("unknown")?;
     Ok((user, next))
 }

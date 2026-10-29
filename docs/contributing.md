@@ -33,13 +33,14 @@ Each layer uses only the ones below it:
 | Crate | What |
 |---|---|
 | `notenwart-core` | The domain without I/O: roles, email texts, PDF pages and annotations |
-| `notenwart-store` | PostgreSQL (connection, `migrations/`) and the object store (S3 or a directory) |
+| `notenwart-store` | Every SQL query, one function each in the feature's module; PostgreSQL (connection, `migrations/`) and the object store (S3 or a directory) |
 | `notenwart-app` | Every command and query: takes the caller (`CurrentUser`) and plain input, checks the role, answers with plain data or an `AppError`; no HTTP |
 | `notenwart-api` | The HTTP API (axum): routes, the session cookie, multipart, status codes; the embedded web app with its Content-Security-Policy; the API tests in `tests/` |
 | `notenwart` | The binary: `serve`, `migrate` |
 
-A new feature gets its command in `notenwart-app` and a thin handler in `notenwart-api` that only takes the request
-apart and turns the answer into HTTP.
+A new feature gets its queries in `notenwart-store`, its command (the rules, and which queries run together in a
+transaction) in `notenwart-app`, and a thin handler in `notenwart-api` that only takes the request apart and turns the
+answer into HTTP.
 
 ## Checks
 

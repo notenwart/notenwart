@@ -17,6 +17,7 @@ use crate::ensembles::require_manage;
 use crate::error::{AppError, AppResult};
 use crate::files::Upload;
 use crate::storage::image_key;
+use notenwart_store::images as db;
 
 pub const MAX_BYTES: usize = 2 * 1024 * 1024;
 
@@ -61,17 +62,7 @@ async fn store(
     let id = Uuid::new_v4();
     let size = bytes.len() as i32;
     state.store.put(&image_key(organization_id, id), PutPayload::from(bytes)).await?;
-    sqlx::query!(
-        "INSERT INTO images (id, organization_id, owner_kind, owner_id, content_type, size) VALUES ($1, $2, $3, $4, $5, $6)",
-        id,
-        organization_id,
-        owner_kind,
-        owner_id,
-        content_type,
-        size
-    )
-    .execute(&state.pool)
-    .await?;
+    db::store(&state.pool, id, organization_id, owner_kind, owner_id, content_type, size).await?;
     if let Some(previous) = previous {
         discard(state, organization_id, previous).await?;
     }
@@ -79,7 +70,7 @@ async fn store(
 }
 
 async fn discard(state: &App, organization_id: Uuid, id: Uuid) -> AppResult<()> {
-    sqlx::query!("DELETE FROM images WHERE id = $1", id).execute(&state.pool).await?;
+    db::discard(&state.pool, id).await?;
     let _ = state.store.delete(&image_key(organization_id, id)).await;
     Ok(())
 }
@@ -93,11 +84,7 @@ pub struct Image {
 
 /// An image for whoever may see it; the organisation's logo also without signing in.
 pub async fn image(state: &App, user: Option<&CurrentUser>, image_id: Uuid) -> AppResult<Image> {
-    let row =
-        sqlx::query!("SELECT organization_id, owner_kind, owner_id, content_type FROM images WHERE id = $1", image_id)
-            .fetch_optional(&state.pool)
-            .await?
-            .ok_or(AppError::NotFound)?;
+    let row = db::image(&state.pool, image_id).await?.ok_or(AppError::NotFound)?;
     if row.owner_kind != "organization" {
         let user = user.filter(|u| u.organization_id == row.organization_id).ok_or(AppError::NotFound)?;
         let allowed = match row.owner_kind.as_str() {
@@ -114,14 +101,7 @@ pub async fn image(state: &App, user: Option<&CurrentUser>, image_id: Uuid) -> A
 
 /// Whether `leader` leads an ensemble `member` belongs to.
 async fn leads(state: &App, leader: Uuid, member: Uuid) -> AppResult<bool> {
-    Ok(sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM ensemble_members l JOIN ensemble_members m ON m.ensemble_id = l.ensemble_id
-                          WHERE l.user_id = $1 AND l.leader AND m.user_id = $2) AS "x!""#,
-        leader,
-        member
-    )
-    .fetch_one(&state.pool)
-    .await?)
+    Ok(db::leads(&state.pool, leader, member).await?)
 }
 
 // ---- the organisation ----
@@ -136,9 +116,7 @@ pub struct Organization {
 }
 
 pub async fn find_organization(state: &App, id: Uuid) -> AppResult<Organization> {
-    let row = sqlx::query!("SELECT id, name, logo_id, profile_pictures FROM organizations WHERE id = $1", id)
-        .fetch_one(&state.pool)
-        .await?;
+    let row = db::find_organization(&state.pool, id).await?;
     Ok(Organization { id: row.id, name: row.name, logo_url: url(row.logo_id), profile_pictures: row.profile_pictures })
 }
 
@@ -156,14 +134,7 @@ pub struct OrganizationInput {
 pub async fn update_organization(state: &App, user: &CurrentUser, input: OrganizationInput) -> AppResult<Organization> {
     user.require(user.is_admin())?;
     let name = check_name(&input.name)?;
-    sqlx::query!(
-        "UPDATE organizations SET name = $2, profile_pictures = $3 WHERE id = $1",
-        user.organization_id,
-        name,
-        input.profile_pictures
-    )
-    .execute(&state.pool)
-    .await?;
+    db::update_organization(&state.pool, user.organization_id, &name, input.profile_pictures).await?;
     find_organization(state, user.organization_id).await
 }
 
@@ -175,12 +146,10 @@ pub async fn organization_logo(
 ) -> AppResult<Organization> {
     user.require(user.is_admin())?;
     let (bytes, kind) = read_image(upload)?;
-    let previous = sqlx::query_scalar!("SELECT logo_id FROM organizations WHERE id = $1", user.organization_id)
-        .fetch_one(&state.pool)
-        .await?;
+    let previous = db::organization_logo_select_organizations(&state.pool, user.organization_id).await?;
     let org = user.organization_id;
     let id = store(state, org, "organization", org, None, bytes, kind).await?;
-    sqlx::query!("UPDATE organizations SET logo_id = $2 WHERE id = $1", org, id).execute(&state.pool).await?;
+    db::organization_logo_update_organizations(&state.pool, org, id).await?;
     if let Some(previous) = previous {
         discard(state, org, previous).await?;
     }
@@ -189,12 +158,8 @@ pub async fn organization_logo(
 
 pub async fn remove_organization_logo(state: &App, user: &CurrentUser) -> AppResult<()> {
     user.require(user.is_admin())?;
-    let previous = sqlx::query_scalar!("SELECT logo_id FROM organizations WHERE id = $1", user.organization_id)
-        .fetch_one(&state.pool)
-        .await?;
-    sqlx::query!("UPDATE organizations SET logo_id = NULL WHERE id = $1", user.organization_id)
-        .execute(&state.pool)
-        .await?;
+    let previous = db::remove_organization_logo_select_organizations(&state.pool, user.organization_id).await?;
+    db::remove_organization_logo_update_organizations(&state.pool, user.organization_id).await?;
     if let Some(previous) = previous {
         discard(state, user.organization_id, previous).await?;
     }
@@ -212,10 +177,9 @@ pub async fn ensemble_logo(
 ) -> AppResult<()> {
     require_manage(state, user, ensemble_id).await?;
     let (bytes, kind) = read_image(upload)?;
-    let previous =
-        sqlx::query_scalar!("SELECT logo_id FROM ensembles WHERE id = $1", ensemble_id).fetch_one(&state.pool).await?;
+    let previous = db::ensemble_logo_select_ensembles(&state.pool, ensemble_id).await?;
     let id = store(state, user.organization_id, "ensemble", ensemble_id, None, bytes, kind).await?;
-    sqlx::query!("UPDATE ensembles SET logo_id = $2 WHERE id = $1", ensemble_id, id).execute(&state.pool).await?;
+    db::ensemble_logo_update_ensembles(&state.pool, ensemble_id, id).await?;
     if let Some(previous) = previous {
         discard(state, user.organization_id, previous).await?;
     }
@@ -224,9 +188,8 @@ pub async fn ensemble_logo(
 
 pub async fn remove_ensemble_logo(state: &App, user: &CurrentUser, ensemble_id: Uuid) -> AppResult<()> {
     require_manage(state, user, ensemble_id).await?;
-    let previous =
-        sqlx::query_scalar!("SELECT logo_id FROM ensembles WHERE id = $1", ensemble_id).fetch_one(&state.pool).await?;
-    sqlx::query!("UPDATE ensembles SET logo_id = NULL WHERE id = $1", ensemble_id).execute(&state.pool).await?;
+    let previous = db::remove_ensemble_logo_select_ensembles(&state.pool, ensemble_id).await?;
+    db::remove_ensemble_logo_update_ensembles(&state.pool, ensemble_id).await?;
     if let Some(previous) = previous {
         discard(state, user.organization_id, previous).await?;
     }
@@ -255,9 +218,7 @@ pub async fn ensemble_symbol(state: &App, user: &CurrentUser, ensemble_id: Uuid,
     {
         return Err(AppError::Invalid("color must be #RRGGBB".into()));
     }
-    sqlx::query!("UPDATE ensembles SET symbol = $2, color = $3 WHERE id = $1", ensemble_id, symbol, color)
-        .execute(&state.pool)
-        .await?;
+    db::ensemble_symbol(&state.pool, ensemble_id, symbol.as_deref(), color.as_deref()).await?;
     Ok(())
 }
 
@@ -270,10 +231,9 @@ pub async fn my_avatar(state: &App, user: &CurrentUser, upload: AppResult<Option
         return Err(AppError::Conflict("profile pictures are switched off in this organisation".into()));
     }
     let (bytes, kind) = read_image(upload)?;
-    let previous =
-        sqlx::query_scalar!("SELECT avatar_id FROM users WHERE id = $1", user.id).fetch_one(&state.pool).await?;
+    let previous = db::my_avatar_select_users(&state.pool, user.id).await?;
     let id = store(state, user.organization_id, "user", user.id, None, bytes, kind).await?;
-    sqlx::query!("UPDATE users SET avatar_id = $2 WHERE id = $1", user.id, id).execute(&state.pool).await?;
+    db::my_avatar_update_users(&state.pool, user.id, id).await?;
     if let Some(previous) = previous {
         discard(state, user.organization_id, previous).await?;
     }
@@ -281,9 +241,8 @@ pub async fn my_avatar(state: &App, user: &CurrentUser, upload: AppResult<Option
 }
 
 pub async fn remove_my_avatar(state: &App, user: &CurrentUser) -> AppResult<()> {
-    let previous =
-        sqlx::query_scalar!("SELECT avatar_id FROM users WHERE id = $1", user.id).fetch_one(&state.pool).await?;
-    sqlx::query!("UPDATE users SET avatar_id = NULL WHERE id = $1", user.id).execute(&state.pool).await?;
+    let previous = db::remove_my_avatar_select_users(&state.pool, user.id).await?;
+    db::remove_my_avatar_update_users(&state.pool, user.id).await?;
     if let Some(previous) = previous {
         discard(state, user.organization_id, previous).await?;
     }

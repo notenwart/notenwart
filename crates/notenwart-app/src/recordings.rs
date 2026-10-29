@@ -19,6 +19,7 @@ use crate::error::{AppError, AppResult};
 use crate::files::Upload;
 use crate::library::clean_file_name;
 use crate::storage::recording_key;
+use notenwart_store::recordings as db;
 
 /// The audio format of a file, from its first bytes (and the name where containers are ambiguous), or none.
 pub fn audio_type(bytes: &[u8], file_name: &str) -> Option<&'static str> {
@@ -78,22 +79,9 @@ pub struct Recording {
 /// Staff and readers of the library see every work; members those they have a part of.
 async fn may_hear(state: &App, user: &CurrentUser, work_id: Uuid) -> AppResult<bool> {
     if user.reads_library() {
-        return Ok(sqlx::query_scalar!(
-            r#"SELECT EXISTS (SELECT 1 FROM works WHERE id = $1 AND organization_id = $2) AS "x!""#,
-            work_id,
-            user.organization_id
-        )
-        .fetch_one(&state.pool)
-        .await?);
+        return Ok(db::may_hear_select_works(&state.pool, work_id, user.organization_id).await?);
     }
-    Ok(sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM visible_parts v JOIN parts p ON p.id = v.part_id
-                          WHERE v.user_id = $1 AND p.work_id = $2) AS "x!""#,
-        user.id,
-        work_id
-    )
-    .fetch_one(&state.pool)
-    .await?)
+    Ok(db::may_hear_select_visible_parts(&state.pool, user.id, work_id).await?)
 }
 
 /// Staff, and leaders of an ensemble that has the work.
@@ -101,29 +89,13 @@ async fn may_manage(state: &App, user: &CurrentUser, work_id: Uuid) -> AppResult
     if user.is_staff() {
         return may_hear(state, user, work_id).await;
     }
-    Ok(sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM ensemble_members m JOIN ensemble_works ew ON ew.ensemble_id = m.ensemble_id
-                          JOIN works w ON w.id = ew.work_id
-                          WHERE m.user_id = $1 AND m.leader AND ew.work_id = $2 AND w.organization_id = $3) AS "x!""#,
-        user.id,
-        work_id,
-        user.organization_id
-    )
-    .fetch_one(&state.pool)
-    .await?)
+    Ok(db::may_manage(&state.pool, user.id, work_id, user.organization_id).await?)
 }
 
 async fn recordings(state: &App, work_id: Uuid) -> AppResult<Vec<Recording>> {
-    Ok(sqlx::query_as!(
-        Recording,
-        r#"SELECT id, work_id, kind, origin, title, part_id, instrument_id, voice, file_name, content_type, size,
-                  duration_seconds, created_at
-           FROM recordings WHERE work_id = $1
-           ORDER BY kind = 'practice', lower(title)"#,
-        work_id
-    )
-    .fetch_all(&state.pool)
-    .await?)
+    Ok(db::recordings(&state.pool, work_id)
+        .await
+        .map(|rows| rows.into_iter().map(Recording::from).collect::<Vec<_>>())?)
 }
 
 pub async fn list(state: &App, user: &CurrentUser, work_id: Uuid) -> AppResult<Vec<Recording>> {
@@ -190,25 +162,13 @@ async fn check(state: &App, user: &CurrentUser, work_id: Uuid, input: &Recording
     }
     let practice = input.kind == "practice";
     if let Some(part) = input.part_id.filter(|_| practice) {
-        let ok = sqlx::query_scalar!(
-            r#"SELECT EXISTS (SELECT 1 FROM parts WHERE id = $1 AND work_id = $2) AS "x!""#,
-            part,
-            work_id
-        )
-        .fetch_one(&state.pool)
-        .await?;
+        let ok = db::check_select_parts(&state.pool, part, work_id).await?;
         if !ok {
             return Err(AppError::Invalid("the part is not of this work".into()));
         }
     }
     if let Some(instrument) = input.instrument_id.filter(|_| practice) {
-        let ok = sqlx::query_scalar!(
-            r#"SELECT EXISTS (SELECT 1 FROM instruments WHERE id = $1 AND organization_id = $2) AS "x!""#,
-            instrument,
-            user.organization_id
-        )
-        .fetch_one(&state.pool)
-        .await?;
+        let ok = db::check_select_instruments(&state.pool, instrument, user.organization_id).await?;
         if !ok {
             return Err(AppError::Invalid("unknown instrument".into()));
         }
@@ -248,10 +208,7 @@ pub async fn upload(
         .ok_or_else(|| AppError::Invalid("not an audio file (MP3, M4A, WAV, FLAC, Ogg, Opus, WebM, AIFF)".into()))?;
     let c = check(state, user, work_id, &input).await?;
     let sha256 = hex::encode(Sha256::digest(&bytes));
-    let duplicate =
-        sqlx::query_scalar!("SELECT title FROM recordings WHERE work_id = $1 AND sha256 = $2", work_id, sha256)
-            .fetch_optional(&state.pool)
-            .await?;
+    let duplicate = db::upload_select_recordings(&state.pool, work_id, &sha256).await?;
     if let Some(title) = duplicate {
         return Err(AppError::Conflict(format!("this recording is already here as “{title}”")));
     }
@@ -259,28 +216,25 @@ pub async fn upload(
     let key = recording_key(user.organization_id, id);
     let size = bytes.len() as i64;
     state.store.put(&key, PutPayload::from(bytes)).await?;
-    let inserted = sqlx::query!(
-        "INSERT INTO recordings (id, organization_id, work_id, kind, origin, title, part_id, instrument_id, voice,
-                                 file_name, content_type, size, sha256, duration_seconds, storage_key, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
+    let inserted = db::upload_insert_recordings(
+        &state.pool,
         id,
         user.organization_id,
         work_id,
-        c.kind,
-        c.origin,
-        c.title,
+        &c.kind,
+        &c.origin,
+        &c.title,
         c.part_id,
         c.instrument_id,
         c.voice,
-        file_name,
+        &file_name,
         content_type,
         size,
-        sha256,
+        &sha256,
         input.duration_seconds.filter(|d| d.is_finite() && *d >= 0.0),
         key.as_ref(),
-        user.actor()
+        user.actor(),
     )
-    .execute(&state.pool)
     .await;
     if let Err(error) = inserted {
         let _ = state.store.delete(&key).await;
@@ -292,14 +246,7 @@ pub async fn upload(
 
 /// The work of a recording of the user's organisation.
 async fn work_of(state: &App, user: &CurrentUser, recording_id: Uuid) -> AppResult<Uuid> {
-    sqlx::query_scalar!(
-        "SELECT work_id FROM recordings WHERE id = $1 AND organization_id = $2",
-        recording_id,
-        user.organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)
+    db::work_of(&state.pool, recording_id, user.organization_id).await?.ok_or(AppError::NotFound)
 }
 
 pub async fn update(
@@ -313,20 +260,17 @@ pub async fn update(
         return Err(AppError::Forbidden);
     }
     let c = check(state, user, work_id, &input).await?;
-    sqlx::query!(
-        "UPDATE recordings SET kind = $2, origin = $3, title = $4, part_id = $5, instrument_id = $6, voice = $7,
-                               duration_seconds = coalesce($8, duration_seconds)
-         WHERE id = $1",
+    db::update(
+        &state.pool,
         recording_id,
-        c.kind,
-        c.origin,
-        c.title,
+        &c.kind,
+        &c.origin,
+        &c.title,
         c.part_id,
         c.instrument_id,
         c.voice,
-        input.duration_seconds.filter(|d| d.is_finite() && *d >= 0.0)
+        input.duration_seconds.filter(|d| d.is_finite() && *d >= 0.0),
     )
-    .execute(&state.pool)
     .await?;
     recordings(state, work_id).await?.into_iter().find(|r| r.id == recording_id).ok_or(AppError::NotFound)
 }
@@ -336,7 +280,7 @@ pub async fn remove(state: &App, user: &CurrentUser, recording_id: Uuid) -> AppR
     if !may_manage(state, user, work_id).await? {
         return Err(AppError::Forbidden);
     }
-    sqlx::query!("DELETE FROM recordings WHERE id = $1", recording_id).execute(&state.pool).await?;
+    db::remove(&state.pool, recording_id).await?;
     let _ = state.store.delete(&recording_key(user.organization_id, recording_id)).await;
     Ok(())
 }
@@ -399,9 +343,7 @@ pub async fn file(
     if !may_hear(state, user, work_id).await? {
         return Err(AppError::NotFound);
     }
-    let row = sqlx::query!("SELECT file_name, content_type, size FROM recordings WHERE id = $1", recording_id)
-        .fetch_one(&state.pool)
-        .await?;
+    let row = db::file(&state.pool, recording_id).await?;
     let size = row.size as u64;
     let key = recording_key(user.organization_id, recording_id);
     let range = match range.map(|r| parse_range(r, size)) {
@@ -418,6 +360,26 @@ pub async fn file(
         range,
         content: object.into_stream(),
     })
+}
+
+impl From<db::RecordingRow> for Recording {
+    fn from(row: db::RecordingRow) -> Self {
+        Recording {
+            id: row.id,
+            work_id: row.work_id,
+            kind: row.kind,
+            origin: row.origin,
+            title: row.title,
+            part_id: row.part_id,
+            instrument_id: row.instrument_id,
+            voice: row.voice,
+            file_name: row.file_name,
+            content_type: row.content_type,
+            size: row.size,
+            duration_seconds: row.duration_seconds,
+            created_at: row.created_at,
+        }
+    }
 }
 
 #[cfg(test)]

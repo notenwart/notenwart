@@ -113,10 +113,10 @@ pub fn draw(frame: &mut Frame, console: &mut Console) {
                         .iter()
                         .map(|e| {
                             ListItem::new(format!(
-                                "{:<40} {:>4} members {:>5} works",
+                                "{:<40} {:>12} {:>10}",
                                 clip(&e.name, 40),
-                                e.members,
-                                e.works
+                                count(e.members, "member"),
+                                count(e.works, "work")
                             ))
                         })
                         .collect();
@@ -140,10 +140,10 @@ pub fn draw(frame: &mut Frame, console: &mut Console) {
                         .iter()
                         .map(|w| {
                             ListItem::new(format!(
-                                "{:<44} {:<28} {:>4} parts",
+                                "{:<44} {:<28} {:>10}",
                                 clip(&w.title, 44),
                                 clip(w.composer.as_deref().unwrap_or(""), 28),
-                                w.parts
+                                count(w.parts, "part")
                             ))
                         })
                         .collect();
@@ -217,6 +217,11 @@ fn overview(frame: &mut Frame, console: &Console, area: Rect) {
         lines.push(Line::from(format!("  {mark} {step}{note}")));
     }
     page(frame, area, " overview ", lines);
+}
+
+/// "1 part", "3 parts".
+fn count(n: i64, thing: &str) -> String {
+    if n == 1 { format!("1 {thing}") } else { format!("{n} {thing}s") }
 }
 
 /// At most `width` characters.

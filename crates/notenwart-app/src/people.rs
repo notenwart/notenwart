@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::App;
 use crate::auth::{CurrentUser, Role, check_name, create_link_token, normalize_email};
 use crate::error::{AppError, AppResult, unique_violation};
+use notenwart_store::people as db;
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -59,36 +60,18 @@ pub struct Invitation {
 }
 
 async fn find(state: &App, organization_id: Uuid, user_id: Uuid) -> AppResult<User> {
-    let row = sqlx::query_as!(
-        UserRow,
-        r#"SELECT u.id, u.display_name AS name, u.email AS "email?", m.role AS "role: Role",
-                  u.password_hash IS NOT NULL AS "has_password!", u.last_login_at,
-                  CASE WHEN o.profile_pictures THEN '/api/images/' || u.avatar_id END AS avatar_url
-           FROM users u JOIN memberships m ON m.user_id = u.id JOIN organizations o ON o.id = m.organization_id
-           WHERE u.id = $1 AND m.organization_id = $2"#,
-        user_id,
-        organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    let row = db::find(&state.pool, user_id, organization_id)
+        .await
+        .map(|row| row.map(UserRow::from))?
+        .ok_or(AppError::NotFound)?;
     Ok(User { row, ensembles: None })
 }
 
 pub async fn list(state: &App, user: &CurrentUser) -> AppResult<Vec<User>> {
     user.require(user.reads_library())?;
-    let mut rows = sqlx::query_as!(
-        UserRow,
-        r#"SELECT u.id, u.display_name AS name, u.email AS "email?", m.role AS "role: Role",
-                  u.password_hash IS NOT NULL AS "has_password!", u.last_login_at,
-                  CASE WHEN o.profile_pictures THEN '/api/images/' || u.avatar_id END AS avatar_url
-           FROM users u JOIN memberships m ON m.user_id = u.id JOIN organizations o ON o.id = m.organization_id
-           WHERE m.organization_id = $1
-           ORDER BY lower(u.display_name), u.id"#,
-        user.organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let mut rows = db::list_select_users(&state.pool, user.organization_id)
+        .await
+        .map(|rows| rows.into_iter().map(UserRow::from).collect::<Vec<_>>())?;
     if !user.is_admin() {
         for other in &mut rows {
             other.email = None;
@@ -97,14 +80,7 @@ pub async fn list(state: &App, user: &CurrentUser) -> AppResult<Vec<User>> {
         return Ok(rows.into_iter().map(|row| User { row, ensembles: None }).collect());
     }
     let mut ensembles: HashMap<Uuid, Vec<EnsembleRef>> = HashMap::new();
-    for r in sqlx::query!(
-        "SELECT m.user_id, e.id, e.name FROM ensemble_members m JOIN ensembles e ON e.id = m.ensemble_id
-         WHERE e.organization_id = $1 ORDER BY lower(e.name)",
-        user.organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?
-    {
+    for r in db::list_select_ensemble_members(&state.pool, user.organization_id).await? {
         ensembles.entry(r.user_id).or_default().push(EnsembleRef { id: r.id, name: r.name });
     }
     Ok(rows
@@ -126,19 +102,10 @@ pub async fn create(state: &App, admin: &CurrentUser, input: UserInput) -> AppRe
     let name = check_name(&input.name)?;
     let email = normalize_email(&input.email)?;
     let mut tx = state.pool.begin().await?;
-    let user_id =
-        sqlx::query_scalar!("INSERT INTO users (email, display_name) VALUES ($1, $2) RETURNING id", email, name)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| unique_violation(e, "a user with this email exists already"))?;
-    sqlx::query!(
-        "INSERT INTO memberships (organization_id, user_id, role) VALUES ($1, $2, $3)",
-        admin.organization_id,
-        user_id,
-        input.role as Role
-    )
-    .execute(&mut *tx)
-    .await?;
+    let user_id = db::create_insert_users(&mut *tx, &email, &name)
+        .await
+        .map_err(|e| unique_violation(e, "a user with this email exists already"))?;
+    db::create_insert_memberships(&mut *tx, admin.organization_id, user_id, input.role as Role).await?;
     tx.commit().await?;
     let user = find(state, admin.organization_id, user_id).await?;
     invitation(state, user).await
@@ -153,23 +120,13 @@ pub async fn update(state: &App, admin: &CurrentUser, user_id: Uuid, input: User
     let name = check_name(&input.name)?;
     let email = normalize_email(&input.email)?;
     let mut tx = state.pool.begin().await?;
-    sqlx::query!("UPDATE users SET display_name = $2, email = $3 WHERE id = $1", user_id, name, email)
-        .execute(&mut *tx)
+    db::update_update_users(&mut *tx, user_id, &name, &email)
         .await
         .map_err(|e| unique_violation(e, "a user with this email exists already"))?;
-    sqlx::query!(
-        "UPDATE memberships SET role = $3 WHERE user_id = $1 AND organization_id = $2",
-        user_id,
-        admin.organization_id,
-        input.role as Role
-    )
-    .execute(&mut *tx)
-    .await?;
+    db::update_update_memberships(&mut *tx, user_id, admin.organization_id, input.role as Role).await?;
     // Leading an ensemble needs the role leader or higher.
     if input.role == Role::Member {
-        sqlx::query!("UPDATE ensemble_members SET leader = false WHERE user_id = $1", user_id)
-            .execute(&mut *tx)
-            .await?;
+        db::update_update_ensemble_members(&mut *tx, user_id).await?;
     }
     tx.commit().await?;
     find(state, admin.organization_id, user_id).await
@@ -256,15 +213,8 @@ pub async fn bulk(state: &App, admin: &CurrentUser, input: BulkInput) -> AppResu
         return Err(AppError::Invalid("select 1 to 2000 people".into()));
     }
     let org = admin.organization_id;
-    let known: HashSet<Uuid> = sqlx::query_scalar!(
-        "SELECT user_id FROM memberships WHERE organization_id = $1 AND user_id = ANY($2)",
-        org,
-        &input.user_ids
-    )
-    .fetch_all(&state.pool)
-    .await?
-    .into_iter()
-    .collect();
+    let known: HashSet<Uuid> =
+        db::bulk_select_memberships(&state.pool, org, &input.user_ids).await?.into_iter().collect();
     // Nobody is deleted while they still have printed parts of the archive.
     let borrowing: HashSet<Uuid> = if input.action == BulkAction::Delete {
         crate::privacy::with_open_loans(state, org, &input.user_ids).await?.into_iter().collect()
@@ -288,13 +238,7 @@ pub async fn bulk(state: &App, admin: &CurrentUser, input: BulkInput) -> AppResu
     let ensemble = match input.action {
         BulkAction::AddToEnsemble | BulkAction::RemoveFromEnsemble => {
             let id = input.ensemble_id.ok_or_else(|| AppError::Invalid("choose an ensemble".into()))?;
-            let exists = sqlx::query_scalar!(
-                r#"SELECT EXISTS (SELECT 1 FROM ensembles WHERE id = $1 AND organization_id = $2) AS "x!""#,
-                id,
-                org
-            )
-            .fetch_one(&state.pool)
-            .await?;
+            let exists = db::bulk_select_ensembles(&state.pool, id, org).await?;
             if !exists {
                 return Err(AppError::NotFound);
             }
@@ -303,14 +247,7 @@ pub async fn bulk(state: &App, admin: &CurrentUser, input: BulkInput) -> AppResu
         _ => None,
     };
     if let Some(instrument) = input.instrument_id {
-        let known = sqlx::query_scalar!(
-            r#"SELECT EXISTS (SELECT 1 FROM instruments
-                              WHERE id = $1 AND organization_id = $2) AS "x!""#,
-            instrument,
-            org
-        )
-        .fetch_one(&state.pool)
-        .await?;
+        let known = db::bulk_select_instruments(&state.pool, instrument, org).await?;
         if !known {
             return Err(AppError::Invalid("unknown instrument".into()));
         }
@@ -324,51 +261,20 @@ pub async fn bulk(state: &App, admin: &CurrentUser, input: BulkInput) -> AppResu
     match input.action {
         BulkAction::SetRole => {
             let role = input.role.ok_or_else(|| AppError::Invalid("choose a role".into()))?;
-            sqlx::query!(
-                "UPDATE memberships SET role = $3 WHERE organization_id = $1 AND user_id = ANY($2)",
-                org,
-                &ids,
-                role as Role
-            )
-            .execute(&mut *tx)
-            .await?;
+            db::bulk_update_memberships(&mut *tx, org, &ids, role as Role).await?;
             if role == Role::Member {
-                sqlx::query!("UPDATE ensemble_members SET leader = false WHERE user_id = ANY($1)", &ids)
-                    .execute(&mut *tx)
-                    .await?;
+                db::bulk_update_ensemble_members(&mut *tx, &ids).await?;
             }
         }
         BulkAction::AddToEnsemble => {
             let ensemble = ensemble.expect("checked above");
-            sqlx::query!(
-                "INSERT INTO ensemble_members (ensemble_id, user_id) SELECT $1, u FROM unnest($2::uuid[]) AS u
-                 ON CONFLICT DO NOTHING",
-                ensemble,
-                &ids
-            )
-            .execute(&mut *tx)
-            .await?;
+            db::bulk_insert_ensemble_members(&mut *tx, ensemble, &ids).await?;
             if let Some(instrument) = input.instrument_id {
-                sqlx::query!(
-                    "INSERT INTO ensemble_member_parts (ensemble_id, user_id, instrument_id, voice)
-                     SELECT $1, u, $3, $4 FROM unnest($2::uuid[]) AS u ON CONFLICT DO NOTHING",
-                    ensemble,
-                    &ids,
-                    instrument,
-                    input.voice
-                )
-                .execute(&mut *tx)
-                .await?;
+                db::bulk_insert_ensemble_member_parts(&mut *tx, ensemble, &ids, instrument, input.voice).await?;
             }
         }
         BulkAction::RemoveFromEnsemble => {
-            sqlx::query!(
-                "DELETE FROM ensemble_members WHERE ensemble_id = $1 AND user_id = ANY($2)",
-                ensemble.expect("checked above"),
-                &ids
-            )
-            .execute(&mut *tx)
-            .await?;
+            db::bulk_delete_ensemble_members(&mut *tx, ensemble.expect("checked above"), &ids).await?;
         }
         BulkAction::Delete => {
             crate::privacy::delete_users(&mut tx, org, admin.actor(), &ids).await?;
@@ -390,4 +296,18 @@ pub async fn bulk(state: &App, admin: &CurrentUser, input: BulkInput) -> AppResu
         }
     }
     Ok(BulkResult { done: ids.len(), skipped, invitations })
+}
+
+impl From<db::UserrowRow> for UserRow {
+    fn from(row: db::UserrowRow) -> Self {
+        UserRow {
+            id: row.id,
+            name: row.name,
+            email: row.email,
+            role: row.role,
+            has_password: row.has_password,
+            last_login_at: row.last_login_at,
+            avatar_url: row.avatar_url,
+        }
+    }
 }

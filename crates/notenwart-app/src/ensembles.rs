@@ -11,6 +11,7 @@ use crate::App;
 use crate::auth::{CurrentUser, Role};
 use crate::error::{AppError, AppResult, unique_violation};
 use crate::programs::{Program, programs_for};
+use notenwart_store::ensembles as db;
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct EnsembleInput {
@@ -48,29 +49,12 @@ async fn can_manage(state: &App, user: &CurrentUser, ensemble_id: Uuid) -> AppRe
     if user.is_staff() {
         return Ok(true);
     }
-    Ok(sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM ensemble_members WHERE ensemble_id = $1 AND user_id = $2 AND leader) AS "x!""#,
-        ensemble_id,
-        user.id
-    )
-    .fetch_one(&state.pool)
-    .await?)
+    Ok(db::can_manage(&state.pool, ensemble_id, user.id).await?)
 }
 
 /// 404 unless the ensemble is in the user's organisation and the user may see it (staff, or a member).
 pub(crate) async fn check_visible(state: &App, user: &CurrentUser, ensemble_id: Uuid) -> AppResult<()> {
-    let visible = sqlx::query_scalar!(
-        r#"SELECT EXISTS (
-               SELECT 1 FROM ensembles e WHERE e.id = $1 AND e.organization_id = $2
-                 AND ($4 OR EXISTS (SELECT 1 FROM ensemble_members m WHERE m.ensemble_id = e.id AND m.user_id = $3))
-           ) AS "x!""#,
-        ensemble_id,
-        user.organization_id,
-        user.id,
-        user.is_staff()
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let visible = db::check_visible(&state.pool, ensemble_id, user.organization_id, user.id, user.is_staff()).await?;
     if visible { Ok(()) } else { Err(AppError::NotFound) }
 }
 
@@ -80,23 +64,7 @@ pub(crate) async fn require_manage(state: &App, user: &CurrentUser, ensemble_id:
 }
 
 async fn summaries(state: &App, user: &CurrentUser, only: Option<Uuid>) -> AppResult<Vec<Ensemble>> {
-    let rows = sqlx::query!(
-        r#"SELECT e.id, e.name, e.description, '/api/images/' || e.logo_id AS logo_url, e.symbol, e.color,
-                  (SELECT count(*) FROM ensemble_members m WHERE m.ensemble_id = e.id) AS "member_count!",
-                  (SELECT count(*) FROM ensemble_works w WHERE w.ensemble_id = e.id) AS "work_count!",
-                  coalesce((SELECT leader FROM ensemble_members m WHERE m.ensemble_id = e.id AND m.user_id = $2),
-                           false) AS "leader!",
-                  EXISTS (SELECT 1 FROM ensemble_members m WHERE m.ensemble_id = e.id AND m.user_id = $2)
-                      AS "member!"
-           FROM ensembles e
-           WHERE e.organization_id = $1 AND ($3::uuid IS NULL OR e.id = $3)
-           ORDER BY lower(e.name)"#,
-        user.organization_id,
-        user.id,
-        only
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let rows = db::summaries(&state.pool, user.organization_id, user.id, only).await?;
     Ok(rows
         .into_iter()
         .filter(|r| user.is_staff() || r.member)
@@ -121,15 +89,9 @@ pub async fn list(state: &App, user: &CurrentUser) -> AppResult<Vec<Ensemble>> {
 pub async fn create(state: &App, user: &CurrentUser, input: EnsembleInput) -> AppResult<Ensemble> {
     user.require(user.is_staff())?;
     let (name, description) = input.normalize()?;
-    let id = sqlx::query_scalar!(
-        "INSERT INTO ensembles (organization_id, name, description) VALUES ($1, $2, $3) RETURNING id",
-        user.organization_id,
-        name,
-        description
-    )
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| unique_violation(e, "an ensemble with this name exists already"))?;
+    let id = db::create(&state.pool, user.organization_id, &name, description.as_deref())
+        .await
+        .map_err(|e| unique_violation(e, "an ensemble with this name exists already"))?;
     let ensemble = summaries(state, user, Some(id)).await?.pop().ok_or(AppError::NotFound)?;
     Ok(ensemble)
 }
@@ -137,8 +99,7 @@ pub async fn create(state: &App, user: &CurrentUser, input: EnsembleInput) -> Ap
 pub async fn update(state: &App, user: &CurrentUser, ensemble_id: Uuid, input: EnsembleInput) -> AppResult<Ensemble> {
     require_manage(state, user, ensemble_id).await?;
     let (name, description) = input.normalize()?;
-    sqlx::query!("UPDATE ensembles SET name = $2, description = $3 WHERE id = $1", ensemble_id, name, description)
-        .execute(&state.pool)
+    db::update(&state.pool, ensemble_id, &name, description.as_deref())
         .await
         .map_err(|e| unique_violation(e, "an ensemble with this name exists already"))?;
     let ensemble = summaries(state, user, Some(ensemble_id)).await?.pop().ok_or(AppError::NotFound)?;
@@ -147,10 +108,7 @@ pub async fn update(state: &App, user: &CurrentUser, ensemble_id: Uuid, input: E
 
 pub async fn remove(state: &App, user: &CurrentUser, ensemble_id: Uuid) -> AppResult<()> {
     user.require(user.is_staff())?;
-    let deleted =
-        sqlx::query!("DELETE FROM ensembles WHERE id = $1 AND organization_id = $2", ensemble_id, user.organization_id)
-            .execute(&state.pool)
-            .await?;
+    let deleted = db::remove(&state.pool, ensemble_id, user.organization_id).await?;
     if deleted.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
@@ -201,25 +159,7 @@ pub struct EnsembleDetail {
 }
 
 async fn members(state: &App, ensemble_id: Uuid, only: Option<Uuid>) -> AppResult<Vec<EnsembleMember>> {
-    let rows = sqlx::query!(
-        r#"SELECT m.user_id, u.display_name, m.leader,
-                  CASE WHEN o.profile_pictures THEN '/api/images/' || u.avatar_id END AS avatar_url,
-                  coalesce(array_agg(p.instrument_id) FILTER (WHERE p.instrument_id IS NOT NULL), '{}')
-                      AS "instruments!: Vec<Uuid>",
-                  coalesce(array_agg(coalesce(p.voice, 0)) FILTER (WHERE p.instrument_id IS NOT NULL), '{}')
-                      AS "voices!: Vec<i16>"
-           FROM ensemble_members m
-           JOIN users u ON u.id = m.user_id
-           JOIN ensembles e2 ON e2.id = m.ensemble_id JOIN organizations o ON o.id = e2.organization_id
-           LEFT JOIN ensemble_member_parts p ON p.ensemble_id = m.ensemble_id AND p.user_id = m.user_id
-           WHERE m.ensemble_id = $1 AND ($2::uuid IS NULL OR m.user_id = $2)
-           GROUP BY m.user_id, u.display_name, m.leader, o.profile_pictures, u.avatar_id
-           ORDER BY m.leader DESC, lower(u.display_name)"#,
-        ensemble_id,
-        only
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let rows = db::members(&state.pool, ensemble_id, only).await?;
     Ok(rows
         .into_iter()
         .map(|r| EnsembleMember {
@@ -243,15 +183,9 @@ pub async fn detail(state: &App, user: &CurrentUser, ensemble_id: Uuid) -> AppRe
     // Members only see themselves (pupils are often minors); those who manage see everyone.
     let only = (!ensemble.can_manage).then_some(user.id);
     let members = members(state, ensemble_id, only).await?;
-    let works = sqlx::query_as!(
-        EnsembleWork,
-        "SELECT w.id, w.title, w.composer, w.arranger, w.publisher, w.lyricist, w.society_number, w.duration_seconds
-         FROM ensemble_works ew JOIN works w ON w.id = ew.work_id
-         WHERE ew.ensemble_id = $1 ORDER BY lower(w.title)",
-        ensemble_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let works = db::detail(&state.pool, ensemble_id)
+        .await
+        .map(|rows| rows.into_iter().map(EnsembleWork::from).collect::<Vec<_>>())?;
     let programs = programs_for(state, &[ensemble_id]).await?.remove(&ensemble_id).unwrap_or_default();
     Ok(EnsembleDetail { ensemble, members, works, programs })
 }
@@ -271,22 +205,11 @@ pub async fn put_member(
     input: MemberInput,
 ) -> AppResult<EnsembleMember> {
     require_manage(state, user, ensemble_id).await?;
-    let role = sqlx::query_scalar!(
-        r#"SELECT role AS "role: Role" FROM memberships WHERE user_id = $1 AND organization_id = $2"#,
-        member_id,
-        user.organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
-    let was_leader = sqlx::query_scalar!(
-        "SELECT leader FROM ensemble_members WHERE ensemble_id = $1 AND user_id = $2",
-        ensemble_id,
-        member_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .unwrap_or(false);
+    let role = db::put_member_select_memberships(&state.pool, member_id, user.organization_id)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    let was_leader =
+        db::put_member_select_ensemble_members(&state.pool, ensemble_id, member_id).await?.unwrap_or(false);
     if input.leader != was_leader {
         // Leaders manage players; who leads is decided by admins and librarians.
         user.require(user.is_staff())?;
@@ -305,40 +228,21 @@ pub async fn put_member(
     }
     let instruments: Vec<Uuid> = input.plays.iter().map(|p| p.instrument_id).collect();
     let voices: Vec<Option<i16>> = input.plays.iter().map(|p| p.voice).collect();
-    let known = sqlx::query_scalar!(
-        r#"SELECT count(*) AS "n!" FROM instruments
-           WHERE id = ANY($1) AND organization_id = $2"#,
-        &instruments,
-        user.organization_id
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let known = db::put_member_select_instruments(&state.pool, &instruments, user.organization_id).await?;
     if known as usize != instruments.iter().collect::<HashSet<_>>().len() {
         return Err(AppError::Invalid("unknown instrument".into()));
     }
 
     let mut tx = state.pool.begin().await?;
-    sqlx::query!(
-        "INSERT INTO ensemble_members (ensemble_id, user_id, leader) VALUES ($1, $2, $3)
-         ON CONFLICT (ensemble_id, user_id) DO UPDATE SET leader = excluded.leader",
-        ensemble_id,
-        member_id,
-        input.leader
-    )
-    .execute(&mut *tx)
-    .await?;
-    sqlx::query!("DELETE FROM ensemble_member_parts WHERE ensemble_id = $1 AND user_id = $2", ensemble_id, member_id)
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query!(
-        "INSERT INTO ensemble_member_parts (ensemble_id, user_id, instrument_id, voice)
-         SELECT $1, $2, i, v FROM unnest($3::uuid[], $4::smallint[]) AS t(i, v)",
+    db::put_member_insert_ensemble_members(&mut *tx, ensemble_id, member_id, input.leader).await?;
+    db::put_member_delete_ensemble_member_parts(&mut *tx, ensemble_id, member_id).await?;
+    db::put_member_insert_ensemble_member_parts(
+        &mut *tx,
         ensemble_id,
         member_id,
         &instruments,
-        &voices as &[Option<i16>]
+        &voices as &[Option<i16>],
     )
-    .execute(&mut *tx)
     .await?;
     tx.commit().await?;
     members(state, ensemble_id, Some(member_id)).await?.pop().ok_or(AppError::NotFound)
@@ -346,20 +250,13 @@ pub async fn put_member(
 
 pub async fn remove_member(state: &App, user: &CurrentUser, ensemble_id: Uuid, member_id: Uuid) -> AppResult<()> {
     require_manage(state, user, ensemble_id).await?;
-    let leader = sqlx::query_scalar!(
-        "SELECT leader FROM ensemble_members WHERE ensemble_id = $1 AND user_id = $2",
-        ensemble_id,
-        member_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    let leader = db::remove_member_select_ensemble_members(&state.pool, ensemble_id, member_id)
+        .await?
+        .ok_or(AppError::NotFound)?;
     if leader {
         user.require(user.is_staff())?;
     }
-    sqlx::query!("DELETE FROM ensemble_members WHERE ensemble_id = $1 AND user_id = $2", ensemble_id, member_id)
-        .execute(&state.pool)
-        .await?;
+    db::remove_member_delete_ensemble_members(&state.pool, ensemble_id, member_id).await?;
     Ok(())
 }
 
@@ -367,17 +264,7 @@ pub async fn remove_member(state: &App, user: &CurrentUser, ensemble_id: Uuid, m
 pub async fn notify_work_given(state: &App, user: &CurrentUser, ensemble_id: Uuid, works: &[Uuid]) {
     let (by, org, works) = (user.id, user.organization_id, works.to_vec());
     {
-        let rows = sqlx::query!(
-            r#"SELECT DISTINCT v.user_id AS "user_id!", w.id AS work_id, w.title
-               FROM visible_parts v JOIN parts p ON p.id = v.part_id JOIN works w ON w.id = p.work_id
-               WHERE v.ensemble_id = $1 AND p.work_id = ANY($2) AND v.user_id <> $3"#,
-            ensemble_id,
-            &works,
-            by
-        )
-        .fetch_all(&state.pool)
-        .await
-        .unwrap_or_default();
+        let rows = db::notify_work_given(&state.pool, ensemble_id, &works, by).await.unwrap_or_default();
         let mut by_work: std::collections::HashMap<(Uuid, String), Vec<Uuid>> = Default::default();
         for r in rows {
             by_work.entry((r.work_id, r.title)).or_default().push(r.user_id);
@@ -397,23 +284,11 @@ pub async fn notify_work_given(state: &App, user: &CurrentUser, ensemble_id: Uui
 
 pub async fn add_work(state: &App, user: &CurrentUser, ensemble_id: Uuid, work_id: Uuid) -> AppResult<()> {
     require_manage(state, user, ensemble_id).await?;
-    let exists = sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM works WHERE id = $1 AND organization_id = $2) AS "x!""#,
-        work_id,
-        user.organization_id
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let exists = db::add_work_select_works(&state.pool, work_id, user.organization_id).await?;
     if !exists {
         return Err(AppError::NotFound);
     }
-    let added = sqlx::query!(
-        "INSERT INTO ensemble_works (ensemble_id, work_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-        ensemble_id,
-        work_id
-    )
-    .execute(&state.pool)
-    .await?;
+    let added = db::add_work_insert_ensemble_works(&state.pool, ensemble_id, work_id).await?;
     if added.rows_affected() > 0 {
         notify_work_given(state, user, ensemble_id, &[work_id]).await;
     }
@@ -423,29 +298,13 @@ pub async fn add_work(state: &App, user: &CurrentUser, ensemble_id: Uuid, work_i
 pub async fn remove_work(state: &App, user: &CurrentUser, ensemble_id: Uuid, work_id: Uuid) -> AppResult<()> {
     require_manage(state, user, ensemble_id).await?;
     let mut tx = state.pool.begin().await?;
-    let deleted =
-        sqlx::query!("DELETE FROM ensemble_works WHERE ensemble_id = $1 AND work_id = $2", ensemble_id, work_id)
-            .execute(&mut *tx)
-            .await?;
+    let deleted = db::remove_work_delete_ensemble_works(&mut *tx, ensemble_id, work_id).await?;
     if deleted.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
     // The work leaves the ensemble's programmes, and grants of its parts end.
-    sqlx::query!(
-        "DELETE FROM program_works pw USING programs p
-         WHERE pw.program_id = p.id AND p.ensemble_id = $1 AND pw.work_id = $2",
-        ensemble_id,
-        work_id
-    )
-    .execute(&mut *tx)
-    .await?;
-    sqlx::query!(
-        "DELETE FROM part_grants g USING parts p WHERE g.part_id = p.id AND g.ensemble_id = $1 AND p.work_id = $2",
-        ensemble_id,
-        work_id
-    )
-    .execute(&mut *tx)
-    .await?;
+    db::remove_work_delete_program_works(&mut *tx, ensemble_id, work_id).await?;
+    db::remove_work_delete_part_grants(&mut *tx, ensemble_id, work_id).await?;
     tx.commit().await?;
     Ok(())
 }
@@ -489,46 +348,27 @@ pub struct MyEnsemble {
 }
 
 pub async fn my_music(state: &App, user: &CurrentUser) -> AppResult<Vec<MyEnsemble>> {
-    let mut result: Vec<MyEnsemble> = sqlx::query!(
-        "SELECT e.id, e.name, m.leader, '/api/images/' || e.logo_id AS logo_url, e.symbol, e.color
-         FROM ensemble_members m JOIN ensembles e ON e.id = m.ensemble_id
-         WHERE m.user_id = $1 AND e.organization_id = $2 ORDER BY lower(e.name)",
-        user.id,
-        user.organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?
-    .into_iter()
-    .map(|r| MyEnsemble {
-        id: r.id,
-        name: r.name,
-        logo_url: r.logo_url,
-        symbol: r.symbol,
-        color: r.color,
-        leader: r.leader,
-        works: Vec::new(),
-        programs: Vec::new(),
-    })
-    .collect();
+    let mut result: Vec<MyEnsemble> = db::my_music_select_ensemble_members(&state.pool, user.id, user.organization_id)
+        .await?
+        .into_iter()
+        .map(|r| MyEnsemble {
+            id: r.id,
+            name: r.name,
+            logo_url: r.logo_url,
+            symbol: r.symbol,
+            color: r.color,
+            leader: r.leader,
+            works: Vec::new(),
+            programs: Vec::new(),
+        })
+        .collect();
     let ids: Vec<Uuid> = result.iter().map(|e| e.id).collect();
     let mut programs = programs_for(state, &ids).await?;
     for ensemble in &mut result {
         ensemble.programs = programs.remove(&ensemble.id).unwrap_or_default();
     }
 
-    let parts = sqlx::query!(
-        r#"SELECT v.ensemble_id AS "ensemble_id!", w.id AS work_id, w.title, w.composer, p.id AS part_id, p.label,
-                  cardinality(p.pages) AS "page_count!", p.updated_at
-           FROM visible_parts v
-           JOIN parts p ON p.id = v.part_id
-           JOIN works w ON w.id = p.work_id
-           LEFT JOIN instruments i ON i.id = p.instrument_id
-           WHERE v.user_id = $1
-           ORDER BY lower(w.title), w.id, i.sort NULLS FIRST, p.voice NULLS FIRST, lower(p.label)"#,
-        user.id
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let parts = db::my_music_select_visible_parts(&state.pool, user.id).await?;
     for row in parts {
         let Some(ensemble) = result.iter_mut().find(|e| e.id == row.ensemble_id) else {
             continue;
@@ -553,13 +393,7 @@ pub async fn may_see_part(state: &App, user: &CurrentUser, part_id: Uuid) -> App
     if user.reads_library() {
         return Ok(true);
     }
-    Ok(sqlx::query_scalar!(
-        r#"SELECT EXISTS (SELECT 1 FROM visible_parts WHERE user_id = $1 AND part_id = $2) AS "x!""#,
-        user.id,
-        part_id
-    )
-    .fetch_one(&state.pool)
-    .await?)
+    Ok(db::may_see_part(&state.pool, user.id, part_id).await?)
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
@@ -576,21 +410,26 @@ pub async fn part_info(state: &App, user: &CurrentUser, part_id: Uuid) -> AppRes
     if !may_see_part(state, user, part_id).await? {
         return Err(AppError::NotFound);
     }
-    let row = sqlx::query!(
-        r#"SELECT p.id, p.label, cardinality(p.pages) AS "page_count!", p.updated_at, w.id AS work_id,
-                  w.title, w.composer
-           FROM parts p JOIN works w ON w.id = p.work_id
-           WHERE p.id = $1 AND w.organization_id = $2"#,
-        part_id,
-        user.organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    let row = db::part_info(&state.pool, part_id, user.organization_id).await?.ok_or(AppError::NotFound)?;
     Ok(PartInfo {
         part: MyPart { id: row.id, label: row.label, page_count: row.page_count, updated_at: row.updated_at },
         work_id: row.work_id,
         work_title: row.title,
         composer: row.composer,
     })
+}
+
+impl From<db::EnsembleworkRow> for EnsembleWork {
+    fn from(row: db::EnsembleworkRow) -> Self {
+        EnsembleWork {
+            id: row.id,
+            title: row.title,
+            composer: row.composer,
+            arranger: row.arranger,
+            publisher: row.publisher,
+            lyricist: row.lyricist,
+            society_number: row.society_number,
+            duration_seconds: row.duration_seconds,
+        }
+    }
 }

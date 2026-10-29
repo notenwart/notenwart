@@ -13,7 +13,9 @@ publish.workspace = true
 notenwart-core = { workspace = true, features = ["sqlx"] }
 anyhow.workspace = true
 object_store.workspace = true
+serde_json.workspace = true
 sqlx.workspace = true
+time.workspace = true
 uuid.workspace = true
 
 [lints]

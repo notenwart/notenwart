@@ -29,7 +29,7 @@ Design and milestones: **docs/spec.md** – read before any work and keep it up 
   nothing.
 - **Privacy:** no tracking, no telemetry, no externally loaded fonts or scripts; collect only what a feature needs
   (pupils are often minors). Members never see other members' data; emails only for admins.
-- **Layers:** `notenwart-core` (domain, no I/O) ← `notenwart-store` (PostgreSQL, objects) ← `notenwart-app` (every
+- **Layers:** `notenwart-core` (domain, no I/O) ← `notenwart-store` (every SQL query, objects) ← `notenwart-app` (every
   command and query; takes the caller `&CurrentUser` and plain input, returns plain data or `AppError`, no HTTP types)
   ← `notenwart-api` (axum handlers only take the request apart and map the answer to HTTP) ← `notenwart` (binary).
   Interfaces (the API, the console `notenwart-tui`) use `notenwart-app` only; the console acts as
@@ -56,8 +56,10 @@ Design and milestones: **docs/spec.md** – read before any work and keep it up 
 ```
 Cargo.toml            workspace: exact dependency versions, lints; rust-toolchain.toml, rustfmt.toml, deny.toml
 crates/notenwart-core/   domain without I/O: Role, email texts (email.rs), PDF pages and annotations (pdf.rs, lopdf)
-crates/notenwart-store/  PostgreSQL connection and migrations/ (append-only), object store: S3 or local directory
-                         (objects.rs), the default organisation (organization.rs)
+crates/notenwart-store/  every SQL query: one module per feature (library.rs, people.rs …), one function per query
+                         taking any executor (pool or transaction) and returning row structs; connection and
+                         migrations/ (append-only), object store: S3 or local directory (objects.rs), the default
+                         organisation (organization.rs)
 crates/notenwart-app/    every command and query – the only layer interfaces use; App (state) and Config in lib.rs
   src/auth.rs         setup, sign-in, one-time links, sessions, roles (CurrentUser = the caller)
   src/people.rs       users and invitations (admin), bulk actions on people

@@ -11,66 +11,16 @@ use uuid::Uuid;
 use crate::App;
 use crate::auth::CurrentUser;
 use crate::error::{AppError, AppResult};
+use notenwart_store::privacy as db;
 
 /// Everything stored about one person of the organisation.
 async fn export(state: &App, organization_id: Uuid, user_id: Uuid) -> AppResult<Value> {
-    let account = sqlx::query!(
-        r#"SELECT u.display_name, u.email, u.created_at, u.last_login_at, u.password_hash IS NOT NULL AS "has_password!",
-                  m.role::text AS "role!", o.name AS organization
-           FROM users u JOIN memberships m ON m.user_id = u.id JOIN organizations o ON o.id = m.organization_id
-           WHERE u.id = $1 AND m.organization_id = $2"#,
-        user_id,
-        organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
-    let ensembles = sqlx::query!(
-        r#"SELECT e.name, m.leader, m.created_at,
-                  coalesce(array_agg(i.name || coalesce(' ' || p.voice, '')) FILTER (WHERE i.id IS NOT NULL), '{}')
-                      AS "plays!: Vec<String>"
-           FROM ensemble_members m JOIN ensembles e ON e.id = m.ensemble_id
-           LEFT JOIN ensemble_member_parts p ON p.ensemble_id = m.ensemble_id AND p.user_id = m.user_id
-           LEFT JOIN instruments i ON i.id = p.instrument_id
-           WHERE m.user_id = $1 AND e.organization_id = $2
-           GROUP BY e.name, m.leader, m.created_at ORDER BY e.name"#,
-        user_id,
-        organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
-    let grants = sqlx::query!(
-        "SELECT w.title, p.label, g.created_at FROM part_grants g
-         JOIN parts p ON p.id = g.part_id JOIN works w ON w.id = p.work_id
-         WHERE g.user_id = $1 AND w.organization_id = $2 ORDER BY w.title",
-        user_id,
-        organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
-    let annotations = sqlx::query!(
-        "SELECT w.title, p.label, a.pages, a.updated_at FROM annotations a
-         JOIN parts p ON p.id = a.part_id JOIN works w ON w.id = p.work_id
-         WHERE a.user_id = $1 AND w.organization_id = $2 ORDER BY w.title",
-        user_id,
-        organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
-    let loans = sqlx::query!(
-        "SELECT w.title, l.item, l.quantity, to_char(l.lent_on, 'YYYY-MM-DD') AS lent_on,
-                to_char(l.due_on, 'YYYY-MM-DD') AS due_on, to_char(l.returned_on, 'YYYY-MM-DD') AS returned_on, l.note
-         FROM loans l JOIN works w ON w.id = l.work_id
-         WHERE l.borrower_id = $1 AND l.organization_id = $2 ORDER BY l.lent_on",
-        user_id,
-        organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
-    let sessions =
-        sqlx::query!("SELECT created_at, expires_at FROM sessions WHERE user_id = $1 ORDER BY created_at", user_id)
-            .fetch_all(&state.pool)
-            .await?;
+    let account = db::export_select_users(&state.pool, user_id, organization_id).await?.ok_or(AppError::NotFound)?;
+    let ensembles = db::export_select_ensemble_members(&state.pool, user_id, organization_id).await?;
+    let grants = db::export_select_part_grants(&state.pool, user_id, organization_id).await?;
+    let annotations = db::export_select_annotations(&state.pool, user_id, organization_id).await?;
+    let loans = db::export_select_loans(&state.pool, user_id, organization_id).await?;
+    let sessions = db::export_select_sessions(&state.pool, user_id).await?;
     let time = |t: OffsetDateTime| t.format(&time::format_description::well_known::Rfc3339).unwrap_or_default();
     Ok(json!({
         "exportedAt": time(OffsetDateTime::now_utc()),
@@ -114,14 +64,7 @@ pub async fn export_user(state: &App, admin: &CurrentUser, user_id: Uuid) -> App
 
 /// Of these people, those who still have printed parts that are not returned.
 pub async fn with_open_loans(state: &App, organization_id: Uuid, ids: &[Uuid]) -> AppResult<Vec<Uuid>> {
-    Ok(sqlx::query_scalar!(
-        r#"SELECT DISTINCT borrower_id AS "id!" FROM loans
-           WHERE organization_id = $1 AND borrower_id = ANY($2) AND returned_on IS NULL"#,
-        organization_id,
-        ids
-    )
-    .fetch_all(&state.pool)
-    .await?)
+    Ok(db::with_open_loans(&state.pool, organization_id, ids).await?)
 }
 
 /// Deletes people for good: their account with memberships, sessions, annotations and single parts; their name on
@@ -133,36 +76,24 @@ pub async fn delete_users(
     ids: &[Uuid],
 ) -> AppResult<()> {
     for &id in ids {
-        let records = sqlx::query!(
-            r#"SELECT (SELECT count(*) FROM ensemble_members WHERE user_id = $1) AS "ensembles!",
-                      (SELECT count(*) FROM annotations WHERE user_id = $1) AS "annotations!",
-                      (SELECT count(*) FROM part_grants WHERE user_id = $1) AS "single_parts!",
-                      (SELECT count(*) FROM loans WHERE borrower_id = $1) AS "loans!",
-                      (SELECT count(*) FROM sessions WHERE user_id = $1) AS "sessions!""#,
-            id
-        )
-        .fetch_one(&mut **tx)
-        .await?;
-        sqlx::query!(
-            "INSERT INTO deletion_log (organization_id, user_id, deleted_by, records) VALUES ($1, $2, $3, $4)",
+        let records = db::delete_users_select_ensemble_members(&mut **tx, id).await?;
+        db::delete_users_insert_deletion_log(
+            &mut **tx,
             organization_id,
             id,
             deleted_by,
-            json!({
+            &json!({
                 "ensembles": records.ensembles,
                 "annotations": records.annotations,
                 "singleParts": records.single_parts,
                 "loans": records.loans,
                 "sessions": records.sessions,
-            })
+            }),
         )
-        .execute(&mut **tx)
         .await?;
     }
-    sqlx::query!("UPDATE loans SET borrower_name = '–', note = NULL WHERE borrower_id = ANY($1)", ids)
-        .execute(&mut **tx)
-        .await?;
-    sqlx::query!("DELETE FROM users WHERE id = ANY($1)", ids).execute(&mut **tx).await?;
+    db::delete_users_update_loans(&mut **tx, ids).await?;
+    db::delete_users_delete_users(&mut **tx, ids).await?;
     Ok(())
 }
 
@@ -183,13 +114,13 @@ pub struct Deletion {
 /// The record of deleted people (admin).
 pub async fn deletions(state: &App, admin: &CurrentUser) -> AppResult<Vec<Deletion>> {
     admin.require(admin.is_admin())?;
-    Ok(sqlx::query_as!(
-        Deletion,
-        r#"SELECT d.user_id, u.display_name AS "deleted_by?", d.deleted_at, d.records
-               FROM deletion_log d LEFT JOIN users u ON u.id = d.deleted_by
-               WHERE d.organization_id = $1 ORDER BY d.deleted_at DESC LIMIT 1000"#,
-        admin.organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?)
+    Ok(db::deletions(&state.pool, admin.organization_id)
+        .await
+        .map(|rows| rows.into_iter().map(Deletion::from).collect::<Vec<_>>())?)
+}
+
+impl From<db::DeletionRow> for Deletion {
+    fn from(row: db::DeletionRow) -> Self {
+        Deletion { user_id: row.user_id, deleted_by: row.deleted_by, deleted_at: row.deleted_at, records: row.records }
+    }
 }

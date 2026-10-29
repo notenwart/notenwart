@@ -57,7 +57,7 @@ pnpm --dir web dev                                # web app on :5173, proxies /a
 | Path | What |
 |---|---|
 | `crates/notenwart-core/` | The domain without I/O: roles, email texts, PDF pages and annotations |
-| `crates/notenwart-store/` | PostgreSQL (connection, migrations in `migrations/`, applied on start) and the object store |
+| `crates/notenwart-store/` | Every SQL query (one module per feature), PostgreSQL migrations in `migrations/` (applied on start), the object store |
 | `crates/notenwart-app/` | Every command and query, with the caller's role checked – the one layer the interfaces use |
 | `crates/notenwart-api/` | The HTTP API under `/api` (axum) and the embedded web app with its Content-Security-Policy |
 | `crates/notenwart-tui/` | The operator console in the terminal (`notenwart tui`) |

@@ -13,6 +13,7 @@ use crate::App;
 use crate::auth::CurrentUser;
 use crate::ensembles::may_see_part;
 use crate::error::{AppError, AppResult};
+use notenwart_store::annotations as db;
 
 const MAX_POINTS: usize = 2000;
 const MAX_STROKES: usize = 5000;
@@ -55,15 +56,7 @@ async fn page_count(state: &App, user: &CurrentUser, part_id: Uuid) -> AppResult
     if !may_see_part(state, user, part_id).await? {
         return Err(AppError::NotFound);
     }
-    sqlx::query_scalar!(
-        r#"SELECT cardinality(p.pages) AS "n!" FROM parts p JOIN works w ON w.id = p.work_id
-           WHERE p.id = $1 AND w.organization_id = $2"#,
-        part_id,
-        user.organization_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)
+    db::page_count(&state.pool, part_id, user.organization_id).await?.ok_or(AppError::NotFound)
 }
 
 fn validate(pages: &BTreeMap<u32, Vec<Stroke>>, page_count: i32) -> Result<(), String> {
@@ -97,10 +90,7 @@ fn validate(pages: &BTreeMap<u32, Vec<Stroke>>, page_count: i32) -> Result<(), S
 
 pub async fn load(state: &App, user: &CurrentUser, part_id: Uuid) -> AppResult<Annotations> {
     page_count(state, user, part_id).await?;
-    let row =
-        sqlx::query!("SELECT pages, updated_at FROM annotations WHERE user_id = $1 AND part_id = $2", user.id, part_id)
-            .fetch_optional(&state.pool)
-            .await?;
+    let row = db::load(&state.pool, user.id, part_id).await?;
     Ok(match row {
         Some(row) => Annotations { pages: serde_json::from_value(row.pages)?, updated_at: Some(row.updated_at) },
         None => Annotations { pages: BTreeMap::new(), updated_at: None },
@@ -116,16 +106,7 @@ pub async fn save(
     let pages = page_count(state, user, part_id).await?;
     validate(&input.pages, pages).map_err(AppError::Invalid)?;
     input.pages.retain(|_, strokes| !strokes.is_empty());
-    let updated_at = sqlx::query_scalar!(
-        "INSERT INTO annotations (user_id, part_id, pages) VALUES ($1, $2, $3)
-         ON CONFLICT (user_id, part_id) DO UPDATE SET pages = excluded.pages, updated_at = now()
-         RETURNING updated_at",
-        user.id,
-        part_id,
-        serde_json::to_value(&input.pages)?
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let updated_at = db::save(&state.pool, user.id, part_id, &serde_json::to_value(&input.pages)?).await?;
     Ok(Annotations { pages: input.pages, updated_at: Some(updated_at) })
 }
 
@@ -148,23 +129,7 @@ pub struct SharedLayer {
 /// The shared layers on a part the user sees: one per ensemble of theirs that has the work (staff: every such
 /// ensemble), empty ones included where the user may start one.
 async fn layers(state: &App, user: &CurrentUser, part_id: Uuid) -> AppResult<Vec<SharedLayer>> {
-    let rows = sqlx::query!(
-        r#"SELECT e.id, e.name, coalesce(m.leader, false) AS "leader!", m.user_id IS NOT NULL AS "member!",
-                  s.pages AS "pages?", s.updated_at AS "updated_at?", u.display_name AS "updated_by?"
-           FROM parts p
-           JOIN ensemble_works ew ON ew.work_id = p.work_id
-           JOIN ensembles e ON e.id = ew.ensemble_id
-           LEFT JOIN ensemble_members m ON m.ensemble_id = e.id AND m.user_id = $2
-           LEFT JOIN shared_annotations s ON s.ensemble_id = e.id AND s.part_id = p.id
-           LEFT JOIN users u ON u.id = s.updated_by
-           WHERE p.id = $1 AND e.organization_id = $3
-           ORDER BY lower(e.name)"#,
-        part_id,
-        user.id,
-        user.organization_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let rows = db::layers(&state.pool, part_id, user.id, user.organization_id).await?;
     let mut result = vec![];
     for r in rows {
         let can_edit = r.leader || user.is_staff();
@@ -203,46 +168,22 @@ pub async fn save_shared(
         layers(state, user, part_id).await?.into_iter().find(|l| l.ensemble_id == ensemble_id && l.can_edit)
     else {
         // Players of the ensemble may look, not change; to everyone else it does not exist.
-        let member = sqlx::query_scalar!(
-            r#"SELECT EXISTS (SELECT 1 FROM ensemble_members WHERE ensemble_id = $1 AND user_id = $2) AS "x!""#,
-            ensemble_id,
-            user.id
-        )
-        .fetch_one(&state.pool)
-        .await?;
+        let member = db::save_shared_select_ensemble_members(&state.pool, ensemble_id, user.id).await?;
         return Err(if member { AppError::Forbidden } else { AppError::NotFound });
     };
     validate(&input.pages, pages).map_err(AppError::Invalid)?;
     input.pages.retain(|_, strokes| !strokes.is_empty());
-    let saved = sqlx::query!(
-        r#"INSERT INTO shared_annotations (ensemble_id, part_id, pages, updated_by) VALUES ($1, $2, $3, $4)
-           ON CONFLICT (ensemble_id, part_id)
-           DO UPDATE SET pages = excluded.pages, updated_by = excluded.updated_by, updated_at = now()
-           RETURNING updated_at, notified_at IS NULL OR notified_at < now() - interval '30 minutes' AS "notify!""#,
+    let saved = db::save_shared_insert_shared_annotations(
+        &state.pool,
         ensemble_id,
         part_id,
-        serde_json::to_value(&input.pages)?,
-        user.actor()
+        &serde_json::to_value(&input.pages)?,
+        user.actor(),
     )
-    .fetch_one(&state.pool)
     .await?;
     if saved.notify && !input.pages.is_empty() {
-        sqlx::query!(
-            "UPDATE shared_annotations SET notified_at = now() WHERE ensemble_id = $1 AND part_id = $2",
-            ensemble_id,
-            part_id
-        )
-        .execute(&state.pool)
-        .await?;
-        let players = sqlx::query_scalar!(
-            r#"SELECT DISTINCT user_id AS "user_id!" FROM visible_parts
-               WHERE part_id = $1 AND ensemble_id = $2 AND user_id <> $3"#,
-            part_id,
-            ensemble_id,
-            user.id
-        )
-        .fetch_all(&state.pool)
-        .await?;
+        db::save_shared_update_shared_annotations(&state.pool, ensemble_id, part_id).await?;
+        let players = db::save_shared_select_visible_parts(&state.pool, part_id, ensemble_id, user.id).await?;
         if let Some((part, work)) = crate::notify::part_names(state, part_id).await {
             crate::notify::later(
                 state,
@@ -314,17 +255,11 @@ pub async fn annotated(
         }
     }
     if query.own.unwrap_or(true)
-        && let Some(pages) =
-            sqlx::query_scalar!("SELECT pages FROM annotations WHERE user_id = $1 AND part_id = $2", user.id, part_id)
-                .fetch_optional(&state.pool)
-                .await?
+        && let Some(pages) = db::annotated_select_annotations(&state.pool, user.id, part_id).await?
     {
         to_marks(&serde_json::from_value(pages)?, &mut marks);
     }
-    let names =
-        sqlx::query!("SELECT p.label, w.title FROM parts p JOIN works w ON w.id = p.work_id WHERE p.id = $1", part_id)
-            .fetch_one(&state.pool)
-            .await?;
+    let names = db::annotated_select_parts(&state.pool, part_id).await?;
     let bytes = state.store.get(&crate::storage::part_key(user.organization_id, part_id)).await?.bytes().await?;
     let pdf = tokio::task::spawn_blocking(move || crate::pdf::stamp(&bytes, &marks))
         .await

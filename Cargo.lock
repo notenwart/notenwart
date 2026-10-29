@@ -2175,7 +2175,9 @@ dependencies = [
  "anyhow",
  "notenwart-core",
  "object_store",
+ "serde_json",
  "sqlx",
+ "time",
  "uuid",
 ]
 

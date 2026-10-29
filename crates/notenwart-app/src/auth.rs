@@ -19,6 +19,7 @@ pub use notenwart_core::Role;
 
 use crate::App;
 use crate::error::{AppError, AppResult};
+use notenwart_store::auth as db;
 
 /// How long a session lasts without being used.
 pub const SESSION_DAYS: i64 = 30;
@@ -92,30 +93,11 @@ impl CurrentUser {
 }
 
 async fn user_for_session(state: &App, token_hash: &[u8]) -> AppResult<Option<CurrentUser>> {
-    let row = sqlx::query!(
-        r#"SELECT u.id, u.display_name, u.email, m.role AS "role: Role", u.password_hash IS NOT NULL AS "has_password!",
-                  o.id AS organization_id, o.name AS organization_name, u.avatar_id, o.logo_id, o.profile_pictures,
-                  s.last_seen_at < now() - interval '1 hour' AS "stale!"
-           FROM sessions s
-           JOIN users u ON u.id = s.user_id
-           JOIN memberships m ON m.user_id = s.user_id AND m.organization_id = s.organization_id
-           JOIN organizations o ON o.id = s.organization_id
-           WHERE s.token_hash = $1 AND s.expires_at > now()"#,
-        token_hash
-    )
-    .fetch_optional(&state.pool)
-    .await?;
+    let row = db::user_for_session_select_sessions(&state.pool, token_hash).await?;
     let Some(row) = row else { return Ok(None) };
     // Sliding expiry, written at most once an hour per session.
     if row.stale {
-        sqlx::query!(
-            "UPDATE sessions SET last_seen_at = now(), expires_at = now() + make_interval(days => $2)
-             WHERE token_hash = $1",
-            token_hash,
-            SESSION_DAYS as i32
-        )
-        .execute(&state.pool)
-        .await?;
+        db::user_for_session_update_sessions(&state.pool, token_hash, SESSION_DAYS as i32).await?;
     }
     Ok(Some(CurrentUser {
         id: row.id,
@@ -254,25 +236,11 @@ pub struct Session {
 }
 
 pub(crate) async fn start_session(state: &App, user_id: Uuid) -> AppResult<Session> {
-    let organization_id = sqlx::query_scalar!(
-        "SELECT organization_id FROM memberships WHERE user_id = $1 ORDER BY created_at LIMIT 1",
-        user_id
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::Unauthorized)?;
+    let organization_id =
+        db::start_session_select_memberships(&state.pool, user_id).await?.ok_or(AppError::Unauthorized)?;
     let (token, hash) = new_token();
-    sqlx::query!(
-        "INSERT INTO sessions (token_hash, user_id, organization_id, expires_at)
-         VALUES ($1, $2, $3, now() + make_interval(days => $4))",
-        hash,
-        user_id,
-        organization_id,
-        SESSION_DAYS as i32
-    )
-    .execute(&state.pool)
-    .await?;
-    sqlx::query!("UPDATE users SET last_login_at = now() WHERE id = $1", user_id).execute(&state.pool).await?;
+    db::start_session_insert_sessions(&state.pool, &hash, user_id, organization_id, SESSION_DAYS as i32).await?;
+    db::start_session_update_users(&state.pool, user_id).await?;
     let user = user_for_session(state, &hash).await?.ok_or(AppError::Unauthorized)?;
     Ok(Session { token, me: user.into() })
 }
@@ -286,26 +254,13 @@ pub async fn create_link_token(
     let (token, hash) = new_token();
     let (purpose, minutes) = if invitation {
         // A new invitation replaces older ones.
-        sqlx::query!(
-            "DELETE FROM login_tokens WHERE user_id = $1 AND purpose = 'invitation' AND used_at IS NULL",
-            user_id
-        )
-        .execute(&state.pool)
-        .await?;
+        db::create_link_token_delete_login_tokens(&state.pool, user_id).await?;
         ("invitation", INVITATION_DAYS * 24 * 60)
     } else {
         ("login", LOGIN_LINK_MINUTES)
     };
-    let expires_at = sqlx::query_scalar!(
-        "INSERT INTO login_tokens (token_hash, user_id, purpose, expires_at)
-         VALUES ($1, $2, $3::text::token_purpose, now() + make_interval(mins => $4)) RETURNING expires_at",
-        hash,
-        user_id,
-        purpose,
-        minutes as i32
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let expires_at =
+        db::create_link_token_insert_login_tokens(&state.pool, &hash, user_id, purpose, minutes as i32).await?;
     Ok((format!("{}/auth?token={token}", state.config.public_url), expires_at))
 }
 
@@ -360,12 +315,10 @@ pub struct PublicOrganization {
 
 /// What the sign-in page needs to know, and who is signed in with `session` (a session token), if anyone.
 pub async fn status(state: &App, session: Option<&str>) -> AppResult<AuthStatus> {
-    let organization = sqlx::query!("SELECT name, logo_id FROM organizations ORDER BY created_at LIMIT 1")
-        .fetch_optional(&state.pool)
+    let organization = db::status_select_organizations(&state.pool)
         .await?
         .map(|o| PublicOrganization { name: o.name, logo_url: crate::images::url(o.logo_id) });
-    let setup_required =
-        !sqlx::query_scalar!(r#"SELECT EXISTS (SELECT 1 FROM users) AS "any!""#).fetch_one(&state.pool).await?;
+    let setup_required = !db::status_select_users(&state.pool).await?;
     let user = match session {
         Some(token) => user_for_session(state, &hash_token(token)).await?,
         None => None,
@@ -399,30 +352,14 @@ pub async fn setup(state: &App, input: SetupInput) -> AppResult<Session> {
 
     let mut tx = state.pool.begin().await?;
     // Serialises concurrent setups: only the first one finds no users.
-    sqlx::query!("LOCK TABLE users IN EXCLUSIVE MODE").execute(&mut *tx).await?;
-    if sqlx::query_scalar!(r#"SELECT EXISTS (SELECT 1 FROM users) AS "any!""#).fetch_one(&mut *tx).await? {
+    db::setup_lock_users(&mut *tx).await?;
+    if db::setup_select_users(&mut *tx).await? {
         return Err(AppError::Conflict("this server is already set up".into()));
     }
-    let organization_id =
-        sqlx::query_scalar!("SELECT id FROM organizations ORDER BY created_at LIMIT 1").fetch_one(&mut *tx).await?;
-    sqlx::query!("UPDATE organizations SET name = $2 WHERE id = $1", organization_id, organization_name)
-        .execute(&mut *tx)
-        .await?;
-    let user_id = sqlx::query_scalar!(
-        "INSERT INTO users (email, display_name, password_hash) VALUES ($1, $2, $3) RETURNING id",
-        email,
-        name,
-        password_hash
-    )
-    .fetch_one(&mut *tx)
-    .await?;
-    sqlx::query!(
-        "INSERT INTO memberships (organization_id, user_id, role) VALUES ($1, $2, 'admin')",
-        organization_id,
-        user_id
-    )
-    .execute(&mut *tx)
-    .await?;
+    let organization_id = db::setup_select_organizations(&mut *tx).await?;
+    db::setup_update_organizations(&mut *tx, organization_id, &organization_name).await?;
+    let user_id = db::setup_insert_users(&mut *tx, &email, &name, &password_hash).await?;
+    db::setup_insert_memberships(&mut *tx, organization_id, user_id).await?;
     tx.commit().await?;
     tracing::info!("set up: first admin created");
 
@@ -441,9 +378,7 @@ pub async fn login(state: &App, input: LoginInput) -> AppResult<Session> {
     if !state.limiter.allow(&key, 10, Duration::from_secs(15 * 60)) {
         return Err(AppError::TooManyRequests);
     }
-    let user = sqlx::query!("SELECT id, password_hash FROM users WHERE lower(email) = $1", email)
-        .fetch_optional(&state.pool)
-        .await?;
+    let user = db::login(&state.pool, &email).await?;
     let (user_id, hash) = match user {
         Some(user) => (Some(user.id), user.password_hash),
         None => (None, None),
@@ -467,9 +402,7 @@ pub async fn magic_link(state: &App, input: MagicLinkInput) -> AppResult<()> {
     if !state.limiter.allow(&format!("magic:{email}"), 3, Duration::from_secs(15 * 60)) {
         return Err(AppError::TooManyRequests);
     }
-    let user = sqlx::query!("SELECT id, display_name FROM users WHERE lower(email) = $1", email)
-        .fetch_optional(&state.pool)
-        .await?;
+    let user = db::magic_link(&state.pool, &email).await?;
     if let Some(user) = user {
         let (url, _) = create_link_token(state, user.id, false).await?;
         let mail = crate::mail::sign_in_link(state.config.language, &user.display_name, &url, LOGIN_LINK_MINUTES);
@@ -485,20 +418,13 @@ pub struct TokenInput {
 
 /// Signs in with a one-time link.
 pub async fn redeem(state: &App, input: TokenInput) -> AppResult<Session> {
-    let user_id = sqlx::query_scalar!(
-        "UPDATE login_tokens SET used_at = now()
-         WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() RETURNING user_id",
-        hash_token(input.token.trim())
-    )
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::Unauthorized)?;
+    let user_id = db::redeem(&state.pool, &hash_token(input.token.trim())).await?.ok_or(AppError::Unauthorized)?;
     start_session(state, user_id).await
 }
 
 /// Ends the session with this token.
 pub async fn logout(state: &App, session: &str) -> AppResult<()> {
-    sqlx::query!("DELETE FROM sessions WHERE token_hash = $1", hash_token(session)).execute(&state.pool).await?;
+    db::logout(&state.pool, &hash_token(session)).await?;
     Ok(())
 }
 
@@ -521,22 +447,17 @@ pub async fn update_me(state: &App, user: &CurrentUser, input: MeInput) -> AppRe
     let name = check_name(&input.name)?;
     if let Some(password) = input.password.filter(|p| !p.is_empty()) {
         if user.has_password {
-            let hash = sqlx::query_scalar!("SELECT password_hash FROM users WHERE id = $1", user.id)
-                .fetch_one(&state.pool)
-                .await?;
+            let hash = db::update_me_select_users(&state.pool, user.id).await?;
             let current = input.current_password.unwrap_or_default();
             if !verify_password(current, hash).await? {
                 return Err(AppError::Invalid("the current password is wrong".into()));
             }
         }
         let hash = hash_password(password).await?;
-        sqlx::query!("UPDATE users SET password_hash = $2 WHERE id = $1", user.id, hash).execute(&state.pool).await?;
+        db::update_me_update_users(&state.pool, user.id, &hash).await?;
     }
-    sqlx::query!("UPDATE users SET display_name = $2 WHERE id = $1", user.id, name).execute(&state.pool).await?;
-    let has_password =
-        sqlx::query_scalar!(r#"SELECT password_hash IS NOT NULL AS "has!" FROM users WHERE id = $1"#, user.id)
-            .fetch_one(&state.pool)
-            .await?;
+    db::update_me_update_users_2(&state.pool, user.id, &name).await?;
+    let has_password = db::update_me_select_users_2(&state.pool, user.id).await?;
     Ok(Me::from(CurrentUser { name, has_password, ..user.clone() }))
 }
 
