@@ -222,7 +222,7 @@ pub async fn save_shared(
         ensemble_id,
         part_id,
         serde_json::to_value(&input.pages)?,
-        user.id
+        user.actor()
     )
     .fetch_one(&state.pool)
     .await?;

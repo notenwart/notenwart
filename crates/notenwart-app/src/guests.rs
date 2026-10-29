@@ -113,7 +113,7 @@ pub async fn create(state: &App, user: &CurrentUser, ensemble_id: Uuid, input: G
         hash,
         &parts,
         expires,
-        user.id
+        user.actor()
     )
     .fetch_one(&state.pool)
     .await?;

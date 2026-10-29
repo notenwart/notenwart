@@ -13,6 +13,7 @@ publish.workspace = true
 notenwart-api.workspace = true
 notenwart-app.workspace = true
 notenwart-store.workspace = true
+notenwart-tui.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 dotenvy.workspace = true

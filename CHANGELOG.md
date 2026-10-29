@@ -9,6 +9,8 @@ that section into the version's.
 - The web app is built with Vite and Svelte, without SvelteKit; the server is a workspace of crates (core, store,
   app, API, terminal interface) with the API description generated from the code (`api/openapi.json`).
 - Strict Content-Security-Policy for the web app.
+- `notenwart tui`: a console in the terminal for the server's operator – server facts and setup checklist, people
+  (search, invite, role, delete), ensembles and works – with keyboard and mouse.
 - Scans with JPEG 2000 or JBIG2 images show their pages: pdf.js gets its image decoders, standard fonts and
   character maps from the app itself (also offline).
 

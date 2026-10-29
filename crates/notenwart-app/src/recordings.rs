@@ -278,7 +278,7 @@ pub async fn upload(
         sha256,
         input.duration_seconds.filter(|d| d.is_finite() && *d >= 0.0),
         key.as_ref(),
-        user.id
+        user.actor()
     )
     .execute(&state.pool)
     .await;

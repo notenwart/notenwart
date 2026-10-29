@@ -60,7 +60,8 @@ pnpm --dir web dev                                # web app on :5173, proxies /a
 | `crates/notenwart-store/` | PostgreSQL (connection, migrations in `migrations/`, applied on start) and the object store |
 | `crates/notenwart-app/` | Every command and query, with the caller's role checked – the one layer the interfaces use |
 | `crates/notenwart-api/` | The HTTP API under `/api` (axum) and the embedded web app with its Content-Security-Policy |
-| `crates/notenwart/` | The binary: `serve`, `migrate`, `openapi` |
+| `crates/notenwart-tui/` | The operator console in the terminal (`notenwart tui`) |
+| `crates/notenwart/` | The binary: `serve`, `migrate`, `openapi`, `tui` |
 | `web/` | Web app / PWA (Vite, Svelte 5, TypeScript), built to `web/dist` and embedded into the binary |
 | `api/openapi.json` | The API description, generated from the code (`notenwart openapi`) – **MIT-licensed**, the base for every client |
 | `deploy/` | Docker Compose files |

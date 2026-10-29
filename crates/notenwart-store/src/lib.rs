@@ -9,7 +9,7 @@
 pub mod objects;
 pub mod organization;
 
-use sqlx::PgPool;
+pub use sqlx::PgPool;
 use sqlx::migrate::Migrator;
 use sqlx::postgres::PgPoolOptions;
 

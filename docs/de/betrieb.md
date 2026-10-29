@@ -74,6 +74,22 @@ docker compose -f deploy/compose.yaml --profile https up -d
 Datenbank-Migrationen laufen beim Start von notenwart. Vor einem Update sichern und das
 [Changelog]({{ '/changelog/' | relative_url }}) lesen. Um bei einer Version zu bleiben, `NOTENWART_VERSION` setzen.
 
+## Die Konsole
+
+Auf dem Server ist `notenwart tui` eine Konsole im Terminal für alle, die ihn betreiben: Sie liest dieselben
+Einstellungen wie der Server, lässt die Organisation wählen, wenn es mehrere gibt, und handelt dann als Admin darin –
+als Betreiber des Servers, nicht als Person der Organisation: Was sie tut, wird unter keinem Namen vermerkt.
+
+```sh
+docker compose -f deploy/compose.yaml exec notenwart notenwart tui
+```
+
+Sie zeigt, was der Server ist, und die Checkliste zur Einrichtung, die Personen (suchen, jemanden neu einladen, die
+Rolle ändern, einen neuen Einladungslink, jemanden löschen – mit Löschprotokoll), die Ensembles mit Mitgliedern und
+Werken und die Werke mit ihren PDFs und Stimmen. Tasten: `1`–`4` oder Tab für die Bereiche, Pfeile zum Bewegen, Enter
+zum Öffnen, Esc zurück, `q` zum Beenden; die Leiste unten zeigt, was sonst geht. Die Maus geht auch – ein Klick tut,
+was die Taste oder die Zeile tut; `m` gibt die Maus ans Terminal zurück, etwa um einen Einladungslink zu markieren.
+
 ## Sicherungen
 
 ```sh

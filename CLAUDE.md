@@ -32,7 +32,8 @@ Design and milestones: **docs/spec.md** – read before any work and keep it up 
 - **Layers:** `notenwart-core` (domain, no I/O) ← `notenwart-store` (PostgreSQL, objects) ← `notenwart-app` (every
   command and query; takes the caller `&CurrentUser` and plain input, returns plain data or `AppError`, no HTTP types)
   ← `notenwart-api` (axum handlers only take the request apart and map the answer to HTTP) ← `notenwart` (binary).
-  Interfaces (API, later the TUI) use `notenwart-app` only.
+  Interfaces (the API, the console `notenwart-tui`) use `notenwart-app` only; the console acts as
+  `CurrentUser::operator` (an admin without a person; `actor()` records nobody).
 - **Every command checks the role** via `CurrentUser` (`is_admin`, `is_staff`, `reads_library`); add an API test
   for each new rule in `crates/notenwart-api/tests/`.
 - **Never delete (your own actions):** move files to `_to_delete/` (git-ignored) instead.
@@ -82,7 +83,10 @@ crates/notenwart-api/    axum: one module per feature with its routes and thin h
                          SignedIn extractor), error.rs (AppError → status + JSON), files.rs (multipart, PDF
                          responses), web.rs (embedded web app from web/dist, CSP and security headers, SPA fallback)
   tests/              API tests (#[sqlx::test], in-memory store), PDF tests
-crates/notenwart/        the binary (clap): `serve`, `migrate`, `openapi` (prints the API description)
+crates/notenwart-tui/    the operator console (ratatui): console.rs (state, keys and mouse → requests; unit-tested
+                         without a terminal), lib.rs (drawing), run.rs (terminal loop, requests → notenwart-app as
+                         CurrentUser::operator)
+crates/notenwart/        the binary (clap): `serve`, `migrate`, `openapi` (prints the API description), `tui`
 scripts/check-age.py  checks that every locked crate is at least 14 days old
 .sqlx/                offline query data for sqlx
 web/                  Vite + Svelte 5 SPA/PWA, built to web/dist; index.html → src/main.ts → src/App.svelte (shell, route guard)

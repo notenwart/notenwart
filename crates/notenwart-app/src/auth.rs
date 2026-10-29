@@ -43,9 +43,35 @@ pub struct CurrentUser {
     pub avatar_id: Option<Uuid>,
     pub organization_logo_id: Option<Uuid>,
     pub profile_pictures: bool,
+    /// The server's operator at the console rather than a person of the organisation (see [`CurrentUser::operator`]).
+    pub operator: bool,
 }
 
 impl CurrentUser {
+    /// The server's operator at the console (`notenwart tui`), acting as an admin of one organisation. They are no
+    /// person in it: no account, no session, `id` is the nil UUID that matches nobody, and what they do is recorded
+    /// without a name ([`CurrentUser::actor`]). The role checks of every command apply to them as to any admin.
+    pub fn operator(organization_id: Uuid, organization_name: String) -> Self {
+        CurrentUser {
+            id: Uuid::nil(),
+            name: "operator".into(),
+            email: String::new(),
+            role: Role::Admin,
+            has_password: false,
+            organization_id,
+            organization_name,
+            avatar_id: None,
+            organization_logo_id: None,
+            profile_pictures: false,
+            operator: true,
+        }
+    }
+
+    /// Who is recorded as having done something (created by, deleted by …): the person, or nobody for the operator.
+    pub fn actor(&self) -> Option<Uuid> {
+        (!self.operator).then_some(self.id)
+    }
+
     pub fn is_admin(&self) -> bool {
         self.role == Role::Admin
     }
@@ -102,6 +128,7 @@ async fn user_for_session(state: &App, token_hash: &[u8]) -> AppResult<Option<Cu
         avatar_id: row.avatar_id.filter(|_| row.profile_pictures),
         organization_logo_id: row.logo_id,
         profile_pictures: row.profile_pictures,
+        operator: false,
     }))
 }
 

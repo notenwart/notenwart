@@ -277,19 +277,19 @@ pub async fn delete_family(state: &App, user: &CurrentUser, family_id: Uuid) -> 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Instrument {
-    id: Uuid,
-    name: String,
-    family_id: Uuid,
+    pub id: Uuid,
+    pub name: String,
+    pub family_id: Uuid,
     /// Name of the family.
-    family: String,
+    pub family: String,
     /// Key the instrument is written in (`Bb`, `Eb`, `F`, …); null for concert pitch.
-    transposition: Option<String>,
+    pub transposition: Option<String>,
     /// Other names and abbreviations (any language), used to recognise file names and imports.
-    aliases: Vec<String>,
+    pub aliases: Vec<String>,
     /// Order within the family.
-    sort: i32,
+    pub sort: i32,
     /// Parts and member assignments that use the instrument.
-    usage: i64,
+    pub usage: i64,
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]

@@ -29,18 +29,18 @@ impl EnsembleInput {
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Ensemble {
-    id: Uuid,
-    name: String,
-    description: Option<String>,
+    pub id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
     /// Path of the logo image, if any.
-    logo_url: Option<String>,
+    pub logo_url: Option<String>,
     /// An emoji shown when there is no logo.
-    symbol: Option<String>,
-    color: Option<String>,
-    member_count: i64,
-    work_count: i64,
+    pub symbol: Option<String>,
+    pub color: Option<String>,
+    pub member_count: i64,
+    pub work_count: i64,
     /// The user may change members and works.
-    can_manage: bool,
+    pub can_manage: bool,
 }
 
 /// Whether the user may change the ensemble's members and works.
@@ -162,42 +162,42 @@ pub async fn remove(state: &App, user: &CurrentUser, ensemble_id: Uuid) -> AppRe
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayedPart {
-    instrument_id: Uuid,
+    pub instrument_id: Uuid,
     /// Null plays every part number of the instrument.
-    voice: Option<i16>,
+    pub voice: Option<i16>,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct EnsembleMember {
-    user_id: Uuid,
-    name: String,
-    avatar_url: Option<String>,
-    leader: bool,
-    plays: Vec<PlayedPart>,
+    pub user_id: Uuid,
+    pub name: String,
+    pub avatar_url: Option<String>,
+    pub leader: bool,
+    pub plays: Vec<PlayedPart>,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct EnsembleWork {
-    id: Uuid,
-    title: String,
-    composer: Option<String>,
-    arranger: Option<String>,
-    publisher: Option<String>,
-    lyricist: Option<String>,
-    society_number: Option<String>,
-    duration_seconds: Option<i32>,
+    pub id: Uuid,
+    pub title: String,
+    pub composer: Option<String>,
+    pub arranger: Option<String>,
+    pub publisher: Option<String>,
+    pub lyricist: Option<String>,
+    pub society_number: Option<String>,
+    pub duration_seconds: Option<i32>,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct EnsembleDetail {
     #[serde(flatten)]
-    ensemble: Ensemble,
-    members: Vec<EnsembleMember>,
-    works: Vec<EnsembleWork>,
+    pub ensemble: Ensemble,
+    pub members: Vec<EnsembleMember>,
+    pub works: Vec<EnsembleWork>,
     /// Programmes by date, undated last.
-    programs: Vec<Program>,
+    pub programs: Vec<Program>,
 }
 
 async fn members(state: &App, ensemble_id: Uuid, only: Option<Uuid>) -> AppResult<Vec<EnsembleMember>> {

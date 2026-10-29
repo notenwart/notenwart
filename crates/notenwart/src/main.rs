@@ -154,17 +154,24 @@ enum Command {
     Migrate,
     /// Print the API's description in OpenAPI – what api/openapi.json holds.
     Openapi,
+    /// The operator console in this terminal: act as an admin of an organisation on this server. Takes the same
+    /// settings as `serve` (its address is not used).
+    Tui(Box<ServeArgs>),
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // A local `.env` (see `.env.example`) is a convenience for development; real environment variables win.
     dotenvy::dotenv().ok();
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "notenwart=info,tower_http=info".into()))
-        .init();
-
     let cli = Cli::parse();
+    // The console owns the terminal; anything logged would draw over it.
+    if !matches!(cli.command, Command::Tui(_)) {
+        tracing_subscriber::fmt()
+            .with_env_filter(
+                EnvFilter::try_from_default_env().unwrap_or_else(|_| "notenwart=info,tower_http=info".into()),
+            )
+            .init();
+    }
     if let Command::Openapi = cli.command {
         println!("{}", notenwart_api::openapi::openapi());
         return Ok(());
@@ -179,76 +186,19 @@ async fn main() -> anyhow::Result<()> {
             tracing::info!("database is up to date");
         }
         Command::Openapi => unreachable!("handled before connecting"),
+        Command::Tui(args) => {
+            let state = app(*args, pool).await?;
+            let handle = tokio::runtime::Handle::current();
+            tokio::task::spawn_blocking(move || notenwart_tui::run(&state, &handle)).await??;
+        }
         Command::Serve(args) => {
             let args = *args;
             let language = Language::from(args.language);
-            let storage = StorageConfig::from(args.storage);
-            let store = storage.open().context("cannot open the storage")?;
             let organization_id = notenwart_store::organization::ensure_default(&pool, &args.organization).await?;
             catalogue::ensure(&pool, organization_id, language).await?;
-            // Compose passes unset variables as empty strings: treat those as not set.
-            let mailer = match args.smtp_url.as_deref().map(str::trim).filter(|u| !u.is_empty()) {
-                Some(url) => Some(Arc::new(Mailer::new(url, &args.mail_from)?)),
-                None => {
-                    tracing::warn!("SMTP_URL is not set: sign-in links and invitations are only written to the log");
-                    None
-                }
-            };
-            // Compose passes unset variables as empty strings: treat those as not set.
-            let filled = |v: &Option<String>| v.as_deref().map(str::trim).filter(|v| !v.is_empty()).map(String::from);
-            let provider = match filled(&args.ai_provider).as_deref() {
-                None => None,
-                Some("anthropic") => Some(notenwart_app::ai::Provider::Anthropic),
-                Some("openai") => Some(notenwart_app::ai::Provider::Openai),
-                Some(other) => anyhow::bail!("NOTENWART_AI_PROVIDER must be anthropic or openai, not {other}"),
-            };
-            let ai = match provider {
-                Some(provider) => {
-                    let ai = notenwart_app::ai::Ai::new(notenwart_app::ai::AiConfig {
-                        provider,
-                        url: filled(&args.ai_url),
-                        key: filled(&args.ai_key),
-                        model: filled(&args.ai_model),
-                        images: args.ai_images,
-                    })?;
-                    tracing::info!("first pages are also read by {}", ai.describe());
-                    Some(ai)
-                }
-                None => None,
-            };
-            let recognizer = notenwart_app::recognize::Recognizer::new(&args.ocr_languages, ai).await;
-            let sso = match (filled(&args.sso_issuer), filled(&args.sso_client_id)) {
-                (Some(issuer), Some(client_id)) => {
-                    tracing::info!("single sign-on through {issuer}");
-                    Some(Arc::new(notenwart_app::sso::Sso::new(notenwart_app::sso::SsoConfig {
-                        issuer,
-                        client_id,
-                        client_secret: filled(&args.sso_client_secret),
-                        name: filled(&args.sso_name).unwrap_or_else(|| "single sign-on".into()),
-                        email_claim: filled(&args.sso_email_claim).unwrap_or_else(|| "email".into()),
-                    })?))
-                }
-                (None, None) => None,
-                _ => anyhow::bail!("single sign-on needs both NOTENWART_SSO_ISSUER and NOTENWART_SSO_CLIENT_ID"),
-            };
-            let public_url = args.public_url.trim_end_matches('/').to_string();
-            let state = App {
-                pool,
-                store,
-                config: Arc::new(Config {
-                    secure_cookies: public_url.starts_with("https://"),
-                    public_url,
-                    max_upload: args.max_upload_mb * 1024 * 1024,
-                    language,
-                    storage: storage.storage.name(),
-                }),
-                mailer,
-                limiter: Arc::default(),
-                recognizer,
-                sso,
-            };
-            notenwart_app::notify::spawn_worker(state.clone());
             let listen = args.listen;
+            let state = app(args, pool).await?;
+            notenwart_app::notify::spawn_worker(state.clone());
             let listener =
                 tokio::net::TcpListener::bind(listen).await.with_context(|| format!("cannot listen on {listen}"))?;
             tracing::info!("listening on http://{listen}");
@@ -274,4 +224,72 @@ async fn shutdown() {
         _ = ctrl_c => {},
         _ = terminate => {},
     }
+}
+
+/// The server's state from its settings: object store, mail, recognition, single sign-on.
+async fn app(args: ServeArgs, pool: notenwart_store::PgPool) -> anyhow::Result<App> {
+    let language = Language::from(args.language);
+    let storage = StorageConfig::from(args.storage);
+    let store = storage.open().context("cannot open the storage")?;
+    // Compose passes unset variables as empty strings: treat those as not set.
+    let mailer = match args.smtp_url.as_deref().map(str::trim).filter(|u| !u.is_empty()) {
+        Some(url) => Some(Arc::new(Mailer::new(url, &args.mail_from)?)),
+        None => {
+            tracing::warn!("SMTP_URL is not set: sign-in links and invitations are only written to the log");
+            None
+        }
+    };
+    // Compose passes unset variables as empty strings: treat those as not set.
+    let filled = |v: &Option<String>| v.as_deref().map(str::trim).filter(|v| !v.is_empty()).map(String::from);
+    let provider = match filled(&args.ai_provider).as_deref() {
+        None => None,
+        Some("anthropic") => Some(notenwart_app::ai::Provider::Anthropic),
+        Some("openai") => Some(notenwart_app::ai::Provider::Openai),
+        Some(other) => anyhow::bail!("NOTENWART_AI_PROVIDER must be anthropic or openai, not {other}"),
+    };
+    let ai = match provider {
+        Some(provider) => {
+            let ai = notenwart_app::ai::Ai::new(notenwart_app::ai::AiConfig {
+                provider,
+                url: filled(&args.ai_url),
+                key: filled(&args.ai_key),
+                model: filled(&args.ai_model),
+                images: args.ai_images,
+            })?;
+            tracing::info!("first pages are also read by {}", ai.describe());
+            Some(ai)
+        }
+        None => None,
+    };
+    let recognizer = notenwart_app::recognize::Recognizer::new(&args.ocr_languages, ai).await;
+    let sso = match (filled(&args.sso_issuer), filled(&args.sso_client_id)) {
+        (Some(issuer), Some(client_id)) => {
+            tracing::info!("single sign-on through {issuer}");
+            Some(Arc::new(notenwart_app::sso::Sso::new(notenwart_app::sso::SsoConfig {
+                issuer,
+                client_id,
+                client_secret: filled(&args.sso_client_secret),
+                name: filled(&args.sso_name).unwrap_or_else(|| "single sign-on".into()),
+                email_claim: filled(&args.sso_email_claim).unwrap_or_else(|| "email".into()),
+            })?))
+        }
+        (None, None) => None,
+        _ => anyhow::bail!("single sign-on needs both NOTENWART_SSO_ISSUER and NOTENWART_SSO_CLIENT_ID"),
+    };
+    let public_url = args.public_url.trim_end_matches('/').to_string();
+    Ok(App {
+        pool,
+        store,
+        config: Arc::new(Config {
+            secure_cookies: public_url.starts_with("https://"),
+            public_url,
+            max_upload: args.max_upload_mb * 1024 * 1024,
+            language,
+            storage: storage.storage.name(),
+        }),
+        mailer,
+        limiter: Arc::default(),
+        recognizer,
+        sso,
+    })
 }

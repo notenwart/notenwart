@@ -211,50 +211,50 @@ impl WorkInput {
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Work {
-    id: Uuid,
-    title: String,
-    composer: Option<String>,
-    arranger: Option<String>,
-    publisher: Option<String>,
-    lyricist: Option<String>,
-    society_number: Option<String>,
-    archive_location: Option<String>,
-    instrumentation: Option<String>,
-    difficulty: Option<i16>,
-    duration_seconds: Option<i32>,
-    source: Option<String>,
-    notes: Option<String>,
-    tags: Vec<String>,
+    pub id: Uuid,
+    pub title: String,
+    pub composer: Option<String>,
+    pub arranger: Option<String>,
+    pub publisher: Option<String>,
+    pub lyricist: Option<String>,
+    pub society_number: Option<String>,
+    pub archive_location: Option<String>,
+    pub instrumentation: Option<String>,
+    pub difficulty: Option<i16>,
+    pub duration_seconds: Option<i32>,
+    pub source: Option<String>,
+    pub notes: Option<String>,
+    pub tags: Vec<String>,
     #[serde(with = "time::serde::rfc3339")]
-    created_at: OffsetDateTime,
+    pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
-    updated_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkSummary {
     #[serde(flatten)]
-    work: Work,
-    source_count: i64,
-    part_count: i64,
+    pub work: Work,
+    pub source_count: i64,
+    pub part_count: i64,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct WorkDetail {
     #[serde(flatten)]
-    work: Work,
-    sources: Vec<SourceFile>,
-    parts: Vec<Part>,
+    pub work: Work,
+    pub sources: Vec<SourceFile>,
+    pub parts: Vec<Part>,
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct WorkFilter {
     /// Matches title, composer and arranger (case-insensitive, substring).
-    q: Option<String>,
+    pub q: Option<String>,
     /// Only works with this tag.
-    tag: Option<String>,
+    pub tag: Option<String>,
 }
 
 pub async fn list_works(state: &App, user: &CurrentUser, filter: WorkFilter) -> AppResult<Vec<WorkSummary>> {
@@ -451,15 +451,15 @@ pub async fn delete_work(state: &App, user: &CurrentUser, work_id: Uuid) -> AppR
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceFile {
-    id: Uuid,
-    work_id: Uuid,
-    file_name: String,
+    pub id: Uuid,
+    pub work_id: Uuid,
+    pub file_name: String,
     /// Bytes.
-    size: i64,
-    sha256: String,
-    page_count: i32,
+    pub size: i64,
+    pub sha256: String,
+    pub page_count: i32,
     #[serde(with = "time::serde::rfc3339")]
-    created_at: OffsetDateTime,
+    pub created_at: OffsetDateTime,
 }
 
 /// Adds a source PDF to a work. `upload` is the file as the interface read it; a failed read counts only after the
@@ -579,18 +579,18 @@ pub struct PartInput {
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Part {
-    id: Uuid,
-    work_id: Uuid,
-    source_id: Uuid,
-    label: String,
-    instrument_id: Option<Uuid>,
-    voice: Option<i16>,
-    pages: Vec<i32>,
-    page_count: i32,
+    pub id: Uuid,
+    pub work_id: Uuid,
+    pub source_id: Uuid,
+    pub label: String,
+    pub instrument_id: Option<Uuid>,
+    pub voice: Option<i16>,
+    pub pages: Vec<i32>,
+    pub page_count: i32,
     #[serde(with = "time::serde::rfc3339")]
-    created_at: OffsetDateTime,
+    pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
-    updated_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
 }
 
 /// Checks a part against its work and renders its PDF into storage.

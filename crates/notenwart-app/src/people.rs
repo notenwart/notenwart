@@ -15,47 +15,47 @@ use crate::error::{AppError, AppResult, unique_violation};
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UserRow {
-    id: Uuid,
-    name: String,
-    email: Option<String>,
-    role: Role,
-    has_password: bool,
+    pub id: Uuid,
+    pub name: String,
+    pub email: Option<String>,
+    pub role: Role,
+    pub has_password: bool,
     #[serde(with = "time::serde::rfc3339::option")]
-    last_login_at: Option<OffsetDateTime>,
-    avatar_url: Option<String>,
+    pub last_login_at: Option<OffsetDateTime>,
+    pub avatar_url: Option<String>,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct User {
     #[serde(flatten)]
     #[schema(inline)]
-    row: UserRow,
+    pub row: UserRow,
     /// Only for admins.
-    ensembles: Option<Vec<EnsembleRef>>,
+    pub ensembles: Option<Vec<EnsembleRef>>,
 }
 
 #[derive(Debug, Serialize, Clone, utoipa::ToSchema)]
 pub struct EnsembleRef {
-    id: Uuid,
-    name: String,
+    pub id: Uuid,
+    pub name: String,
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UserInput {
-    name: String,
-    email: String,
-    role: Role,
+    pub name: String,
+    pub email: String,
+    pub role: Role,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Invitation {
-    user: User,
+    pub user: User,
     /// One-time sign-in link to hand over.
-    url: String,
+    pub url: String,
     #[serde(with = "time::serde::rfc3339")]
-    expires_at: OffsetDateTime,
-    emailed: bool,
+    pub expires_at: OffsetDateTime,
+    pub emailed: bool,
 }
 
 async fn find(state: &App, organization_id: Uuid, user_id: Uuid) -> AppResult<User> {
@@ -186,7 +186,7 @@ pub async fn remove(state: &App, admin: &CurrentUser, user_id: Uuid) -> AppResul
     }
     // Users belong to one organisation for now, so the user goes with the membership.
     let mut tx = state.pool.begin().await?;
-    crate::privacy::delete_users(&mut tx, admin.organization_id, admin.id, &[user_id]).await?;
+    crate::privacy::delete_users(&mut tx, admin.organization_id, admin.actor(), &[user_id]).await?;
     tx.commit().await?;
     Ok(())
 }
@@ -371,7 +371,7 @@ pub async fn bulk(state: &App, admin: &CurrentUser, input: BulkInput) -> AppResu
             .await?;
         }
         BulkAction::Delete => {
-            crate::privacy::delete_users(&mut tx, org, admin.id, &ids).await?;
+            crate::privacy::delete_users(&mut tx, org, admin.actor(), &ids).await?;
         }
         BulkAction::Invite => {}
     }

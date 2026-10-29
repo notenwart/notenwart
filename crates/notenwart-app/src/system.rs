@@ -49,46 +49,61 @@ impl crate::schema::Strings for LanguageName {
 #[serde(rename_all = "camelCase")]
 pub struct Step {
     #[schema(schema_with = crate::schema::strings::<StepKey>)]
-    key: &'static str,
-    done: bool,
+    pub key: &'static str,
+    pub done: bool,
     /// Not needed for every organisation.
-    optional: bool,
+    pub optional: bool,
     /// Ticked by hand rather than recognised.
-    manual: bool,
+    pub manual: bool,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Counts {
-    people: i64,
-    ensembles: i64,
-    works: i64,
-    parts: i64,
-    recordings: i64,
+    pub people: i64,
+    pub ensembles: i64,
+    pub works: i64,
+    pub parts: i64,
+    pub recordings: i64,
     /// Uploaded sources, recordings and images; parts are cut from the sources and not counted twice.
-    stored_bytes: i64,
+    pub stored_bytes: i64,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct System {
-    version: &'static str,
-    public_url: String,
+    pub version: &'static str,
+    pub public_url: String,
     #[schema(schema_with = crate::schema::strings::<LanguageName>)]
-    language: &'static str,
+    pub language: &'static str,
     /// s3 or fs.
-    storage: &'static str,
-    max_upload_bytes: usize,
+    pub storage: &'static str,
+    pub max_upload_bytes: usize,
     /// The sender of emails; none when the server sends none.
-    mail_from: Option<String>,
-    recognition: crate::recognize::Abilities,
+    pub mail_from: Option<String>,
+    pub recognition: crate::recognize::Abilities,
     /// The external AI reading pages, if any.
-    ai: Option<String>,
-    sso: Option<String>,
+    pub ai: Option<String>,
+    pub sso: Option<String>,
     #[schema(inline)]
-    counts: Counts,
+    pub counts: Counts,
     #[schema(inline)]
-    checklist: Vec<Step>,
+    pub checklist: Vec<Step>,
+}
+
+/// An organisation on this server, for the operator to choose at the console.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OrganizationChoice {
+    pub id: uuid::Uuid,
+    pub name: String,
+}
+
+/// Every organisation on this server, oldest first. Only for the operator at the console (`notenwart tui`), who
+/// already holds the server's own access; no person of an organisation reaches it.
+pub async fn organizations(state: &App) -> AppResult<Vec<OrganizationChoice>> {
+    Ok(sqlx::query_as!(OrganizationChoice, "SELECT id, name FROM organizations ORDER BY created_at")
+        .fetch_all(&state.pool)
+        .await?)
 }
 
 pub async fn system(state: &App, user: &CurrentUser) -> AppResult<System> {

@@ -444,7 +444,7 @@ pub async fn grant(
         ensemble_id,
         member_id,
         part_id,
-        user.id
+        user.actor()
     )
     .execute(&state.pool)
     .await?;

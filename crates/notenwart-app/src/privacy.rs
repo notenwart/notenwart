@@ -129,7 +129,7 @@ pub async fn with_open_loans(state: &App, organization_id: Uuid, ids: &[Uuid]) -
 pub async fn delete_users(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     organization_id: Uuid,
-    deleted_by: Uuid,
+    deleted_by: Option<Uuid>,
     ids: &[Uuid],
 ) -> AppResult<()> {
     for &id in ids {

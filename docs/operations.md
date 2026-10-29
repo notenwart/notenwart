@@ -71,6 +71,22 @@ docker compose -f deploy/compose.yaml --profile https up -d
 Database migrations run when notenwart starts. Make a backup before updating; read the [changelog]({{ '/changelog/' | relative_url }}). To stay on
 a version, set `NOTENWART_VERSION`.
 
+## The console
+
+On the server, `notenwart tui` is a console in the terminal for whoever runs it: it reads the same settings as the
+server, lets you choose the organisation if there are several, and then acts as an admin of it – as the server's
+operator, not as a person of the organisation: nothing it does is recorded under a name.
+
+```sh
+docker compose -f deploy/compose.yaml exec notenwart notenwart tui
+```
+
+It shows the server's facts and the setup checklist, the people (search, invite someone new, change a role, a new
+invitation link, delete someone with a record of the deletion), the ensembles with their members and works, and the
+works with their PDFs and parts. Keys: `1`–`4` or Tab for the parts, arrows to move, Enter to open, Esc to go back,
+`q` to quit; the bar at the bottom shows what else works. The mouse works too – a click does what the key or the
+row does; `m` hands the mouse back to the terminal, for example to select an invitation link.
+
 ## Backups
 
 ```sh
