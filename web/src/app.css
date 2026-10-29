@@ -80,6 +80,10 @@ body {
 	background: var(--bg);
 	color: var(--text);
 }
+/* The element the app is mounted into takes no part in the layout. */
+#app {
+	display: contents;
+}
 a {
 	color: var(--link);
 	text-underline-offset: 0.15em;

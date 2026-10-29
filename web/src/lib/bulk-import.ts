@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Importing a whole folder of sheet music (a Google Drive download, a ZIP, a folder on the computer): which works and
-// parts the files become. The page (routes/works/import) shows the plan for corrections and then carries it out.
+// parts the files become. The page (pages/WorksImport.svelte) shows the plan for corrections and then carries it out.
 
 import { unzip } from 'fflate';
 import type { Instrument, Recognition } from './api/index.js';
