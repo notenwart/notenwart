@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Each organisation's instrument families and instruments (`catalogue` in api/openapi.yaml). An organisation starts
+//! Each organisation's instrument families and instruments (`catalogue` in api/openapi.json). An organisation starts
 //! with a copy of the built-in catalogue, named in the server's language; admins and librarians change it from there.
 
 use std::collections::HashMap;
@@ -169,8 +169,9 @@ fn transposition(language: Language, key: Option<&str>) -> Option<String> {
 
 // ---- families ----
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(as = InstrumentFamily)]
 pub struct Family {
     id: Uuid,
     name: String,
@@ -178,10 +179,12 @@ pub struct Family {
     instrument_count: i64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(as = InstrumentFamilyInput)]
 pub struct FamilyInput {
     name: String,
+    /// Omitted for new families means last.
     sort: Option<i32>,
 }
 
@@ -271,21 +274,25 @@ pub async fn delete_family(state: &App, user: &CurrentUser, family_id: Uuid) -> 
 
 // ---- instruments ----
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Instrument {
     id: Uuid,
     name: String,
     family_id: Uuid,
+    /// Name of the family.
     family: String,
+    /// Key the instrument is written in (`Bb`, `Eb`, `F`, …); null for concert pitch.
     transposition: Option<String>,
+    /// Other names and abbreviations (any language), used to recognise file names and imports.
     aliases: Vec<String>,
+    /// Order within the family.
     sort: i32,
     /// Parts and member assignments that use the instrument.
     usage: i64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InstrumentInput {
     name: String,
@@ -293,6 +300,7 @@ pub struct InstrumentInput {
     transposition: Option<String>,
     #[serde(default)]
     aliases: Vec<String>,
+    /// Order within the family; omitted for new instruments means last.
     sort: Option<i32>,
 }
 
@@ -429,7 +437,7 @@ pub async fn delete_instrument(state: &App, user: &CurrentUser, instrument_id: U
     Ok(())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct MergeInput {
     /// The instrument that stays.

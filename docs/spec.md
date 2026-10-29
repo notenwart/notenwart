@@ -286,7 +286,7 @@ server (hosting providers): `OPEN`.
 - OMR with Audiveris (AGPL-3.0) → MusicXML: transposition, part extraction, playback; optional worker container
 - scan clean-up (deskew, crop, contrast)
 - annotations; cloud-drive import, ZIP export; lending of paper copies
-- native app (likely Flutter) as a separate MIT-licensed repository built on `api/openapi.yaml`
+- native app (likely Flutter) as a separate MIT-licensed repository built on `api/openapi.json`
 
 ## 5. Architecture
 
@@ -312,9 +312,9 @@ Browser/PWA (TypeScript) ──HTTPS──► notenwart (one Rust binary) ──
   dictionary, a unit test fails when a UI string lacks a translation; the browser language decides until the user
   picks one in their account. Server error messages stay English and are translated in the web app where they are
   fixed strings.
-- **API contract:** `api/openapi.yaml` (MIT) is the source of truth; web types are generated with
-  `openapi-typescript`. Checking the server against it in CI: `OPEN` (e.g. `utoipa`-generated spec compared to the
-  file).
+- **API contract:** described in the server's code (`utoipa`) and written to `api/openapi.json` (MIT) by
+  `notenwart openapi`; CI checks the file matches the code. Web types are generated from it with
+  `openapi-typescript`.
 - **Deployment:** one container image; Compose with PostgreSQL and a single-node Garage, which a one-shot
   `garage-init` (Python, admin API v2) prepares idempotently: layout, bucket, access key. A Nix module later.
 

@@ -12,7 +12,7 @@ use crate::App;
 use crate::auth::{CurrentUser, Role, check_name, create_link_token, normalize_email};
 use crate::error::{AppError, AppResult, unique_violation};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UserRow {
     id: Uuid,
@@ -25,31 +25,33 @@ pub struct UserRow {
     avatar_url: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct User {
     #[serde(flatten)]
+    #[schema(inline)]
     row: UserRow,
     /// Only for admins.
     ensembles: Option<Vec<EnsembleRef>>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, utoipa::ToSchema)]
 pub struct EnsembleRef {
     id: Uuid,
     name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UserInput {
     name: String,
     email: String,
     role: Role,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Invitation {
     user: User,
+    /// One-time sign-in link to hand over.
     url: String,
     #[serde(with = "time::serde::rfc3339")]
     expires_at: OffsetDateTime,
@@ -197,7 +199,7 @@ pub async fn invite(state: &App, admin: &CurrentUser, user_id: Uuid) -> AppResul
 
 // ---- bulk actions ----
 
-#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum BulkAction {
     SetRole,
@@ -207,25 +209,28 @@ pub enum BulkAction {
     Delete,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BulkInput {
     user_ids: Vec<Uuid>,
+    #[schema(inline)]
     action: BulkAction,
     role: Option<Role>,
+    /// For addToEnsemble and removeFromEnsemble.
     ensemble_id: Option<Uuid>,
+    /// For addToEnsemble – also play this instrument there.
     instrument_id: Option<Uuid>,
     voice: Option<i16>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Skipped {
     user_id: Uuid,
     reason: &'static str,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BulkInvitation {
     user_id: Uuid,
@@ -234,10 +239,14 @@ pub struct BulkInvitation {
     url: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct BulkResult {
+    /// People the action was applied to.
     done: usize,
+    #[schema(inline)]
     skipped: Vec<Skipped>,
+    /// New invitation links (action invite).
+    #[schema(inline)]
     invitations: Vec<BulkInvitation>,
 }
 

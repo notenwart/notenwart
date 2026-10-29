@@ -14,34 +14,52 @@ use crate::error::{AppError, AppResult};
 
 const MAX_ROWS: usize = 2000;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportRow {
     name: String,
     email: String,
+    /// admin, librarian, leader or member (also German – Admin, Notenverwaltung, Leitung, Mitglied); empty means
+    /// member. Ignored for existing people.
     role: Option<String>,
+    /// Ensemble name; created when missing.
     ensemble: Option<String>,
+    /// Instrument name or alias (English or German, e.g. "Trompete"); needs an ensemble.
     instrument: Option<String>,
+    /// Part number; empty plays every part of the instrument.
     voice: Option<i16>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportInput {
     rows: Vec<ImportRow>,
     dry_run: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(as = ImportRowResult)]
 pub struct RowResult {
+    /// Position in `rows`, starting at 1.
     line: usize,
+    #[schema(schema_with = crate::schema::strings::<Outcome>)]
     outcome: &'static str,
+    /// Why the row cannot be imported (English).
     message: Option<String>,
+    /// For new people after a real import.
     invitation_url: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+/// The outcomes of a row, as the API names them.
+#[derive(Debug)]
+pub struct Outcome;
+
+impl crate::schema::Strings for Outcome {
+    const VALUES: &[&str] = &["new", "existing", "error"];
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportResult {
     applied: bool,

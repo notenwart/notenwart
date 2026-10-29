@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Checks on every push and pull request: the web app (lint, types, tests, build, its API types up to date with
-# the API description); the Rust workspace on Linux and macOS with the web build embedded (format, lints, tests
-# against PostgreSQL, migrations); dependencies (cargo deny). The licence check
-# (REUSE) and a sign-off (DCO) on every commit of a pull request come from falkoss/starterpack, pinned by commit.
+# api/openapi.json); the Rust workspace on Linux and macOS with the web build embedded (format, lints, tests
+# against PostgreSQL, migrations, api/openapi.json as the code writes it); dependencies (cargo deny). The licence
+# check (REUSE) and a sign-off (DCO) on every commit of a pull request come from falkoss/starterpack, pinned by commit.
 # Actions are pinned by commit, with the version as a comment.
 name: CI
 
@@ -91,6 +91,10 @@ jobs:
       - run: cargo test --locked
       - name: Migrations apply
         run: cargo run --locked -q -p notenwart -- migrate
+      - name: api/openapi.json matches the code
+        run: |
+          cargo run --locked -q -p notenwart -- openapi > api/openapi.json
+          git diff --exit-code api/openapi.json
 
   dependencies:
     runs-on: ubuntu-latest

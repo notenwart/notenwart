@@ -6,7 +6,7 @@ use axum::response::{IntoResponse, Response};
 use notenwart_app::error::AppError;
 use serde::Serialize;
 
-/// An error of the app layer as the API answers it: a status and the `Error` schema of `api/openapi.yaml`.
+/// An error of the app layer as the API answers it: a status and the `Error` schema of `api/openapi.json`.
 #[derive(Debug)]
 pub struct ApiError(pub AppError);
 
@@ -18,9 +18,13 @@ impl<E: Into<AppError>> From<E> for ApiError {
     }
 }
 
-#[derive(Serialize)]
-struct Body<'a> {
-    error: &'a str,
+/// What went wrong (the `Error` schema).
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[schema(as = Error)]
+pub struct Problem {
+    /// Machine-readable code, e.g. `unauthorized`, `forbidden`, `not_found`, `invalid`, `conflict`.
+    error: &'static str,
+    /// Human-readable explanation (English).
     message: String,
 }
 
@@ -43,6 +47,6 @@ impl IntoResponse for ApiError {
                 (StatusCode::INTERNAL_SERVER_ERROR, "internal", "internal server error".to_string())
             }
         };
-        (status, Json(Body { error, message })).into_response()
+        (status, Json(Problem { error, message })).into_response()
     }
 }

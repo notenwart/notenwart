@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Instruments, works, their uploaded source PDFs and the parts split from them (`library` in api/openapi.yaml).
+//! Instruments, works, their uploaded source PDFs and the parts split from them (`library` in api/openapi.json).
 
 use std::collections::HashSet;
 
@@ -101,7 +101,8 @@ pub async fn list_tags(state: &App, user: &CurrentUser) -> AppResult<Vec<String>
 }
 
 /// Values already used on works, most used first, for suggestions while typing.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[schema(as = WorkFacets)]
 pub struct Facets {
     composers: Vec<String>,
     arrangers: Vec<String>,
@@ -144,7 +145,7 @@ pub async fn work_facets(state: &App, user: &CurrentUser) -> AppResult<Facets> {
 
 // ---- works ----
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WorkInput {
     title: String,
@@ -159,9 +160,11 @@ pub struct WorkInput {
     /// Where the printed copies are kept, e.g. "Schrank 3, Fach B".
     #[serde(default)]
     archive_location: Option<String>,
+    /// Free text, e.g. "Symphonic band" or "SATB".
     instrumentation: Option<String>,
     difficulty: Option<i16>,
     duration_seconds: Option<i32>,
+    /// Where the music comes from or under which licence it is used (free text, for the operator).
     source: Option<String>,
     notes: Option<String>,
     #[serde(default)]
@@ -205,7 +208,7 @@ impl WorkInput {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Work {
     id: Uuid,
@@ -228,7 +231,7 @@ pub struct Work {
     updated_at: OffsetDateTime,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkSummary {
     #[serde(flatten)]
@@ -237,7 +240,7 @@ pub struct WorkSummary {
     part_count: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct WorkDetail {
     #[serde(flatten)]
     work: Work,
@@ -245,9 +248,12 @@ pub struct WorkDetail {
     parts: Vec<Part>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct WorkFilter {
+    /// Matches title, composer and arranger (case-insensitive, substring).
     q: Option<String>,
+    /// Only works with this tag.
     tag: Option<String>,
 }
 
@@ -442,12 +448,13 @@ pub async fn delete_work(state: &App, user: &CurrentUser, work_id: Uuid) -> AppR
 
 // ---- source files ----
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceFile {
     id: Uuid,
     work_id: Uuid,
     file_name: String,
+    /// Bytes.
     size: i64,
     sha256: String,
     page_count: i32,
@@ -554,17 +561,22 @@ pub async fn source_file(state: &App, user: &CurrentUser, source_id: Uuid) -> Ap
 
 // ---- parts ----
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PartInput {
+    /// Display name, e.g. "Clarinet 2" or "Full score".
     label: String,
+    /// Null for parts without a single instrument (full score, choir).
     instrument_id: Option<Uuid>,
+    /// Part number for instruments with several parts (Clarinet 1, 2, 3).
     voice: Option<i16>,
+    /// A source file of the same work.
     source_id: Uuid,
+    /// 1-based page numbers of the source file in the order the part shows them; each page at most once.
     pages: Vec<i32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Part {
     id: Uuid,

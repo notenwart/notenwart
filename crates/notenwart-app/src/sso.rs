@@ -77,8 +77,10 @@ fn redirect_uri(state: &App) -> String {
     format!("{}/api/auth/sso/callback", state.config.public_url)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct StartQuery {
+    /// Path to return to afterwards; only paths of this site.
     next: Option<String>,
 }
 
@@ -126,7 +128,8 @@ pub async fn start(state: &App, query: StartQuery) -> Start {
     Start::Provider { url: url.into(), flow }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct CallbackQuery {
     code: Option<String>,
     state: Option<String>,

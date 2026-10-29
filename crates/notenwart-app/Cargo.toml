@@ -31,6 +31,7 @@ time.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true
+utoipa.workspace = true
 
 [lints]
 workspace = true

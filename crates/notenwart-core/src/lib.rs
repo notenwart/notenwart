@@ -10,7 +10,7 @@ pub mod pdf;
 use serde::{Deserialize, Serialize};
 
 /// What someone may do in an organisation.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
 #[cfg_attr(feature = "sqlx", sqlx(type_name = "organization_role", rename_all = "lowercase"))]
 #[serde(rename_all = "lowercase")]

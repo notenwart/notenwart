@@ -41,7 +41,7 @@ pub struct Known {
     pub aliases: Vec<String>,
 }
 
-#[derive(Debug, Default, Clone, Serialize, PartialEq)]
+#[derive(Debug, Default, Clone, Serialize, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Fields {
     pub title: Option<String>,
@@ -60,23 +60,37 @@ pub struct Fields {
     pub time_signature: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Recognition {
     /// Where the text came from: `text` (the PDF's own), `ocr`, or `none`.
+    #[schema(schema_with = crate::schema::strings::<Method>)]
     pub method: &'static str,
     /// The external AI added to the result.
     pub ai: bool,
     #[serde(flatten)]
+    #[schema(inline)]
     pub fields: Fields,
 }
 
+/// Where the text of a page came from, as the API names it.
+#[derive(Debug)]
+pub struct Method;
+
+impl crate::schema::Strings for Method {
+    const VALUES: &[&str] = &["text", "ocr", "none"];
+}
+
 /// What this server can do, found out on start.
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(as = RecognitionAbilities)]
 pub struct Abilities {
+    /// Text in digital PDFs.
     pub text: bool,
+    /// Text in scans.
     pub ocr: bool,
+    /// An external AI reads the page as well (also clef, key and time signature).
     pub ai: bool,
 }
 
@@ -197,7 +211,7 @@ fn words(lines: &[Line]) -> usize {
 // ---- the parts in a PDF with all parts ----
 
 /// A run of pages that belong to one part, read from the page headers.
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PartProposal {
     /// The header as printed on its first page ("2. Trompete in B"); none for pages before the first header.

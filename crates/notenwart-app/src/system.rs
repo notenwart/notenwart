@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! For admins (`system` in api/openapi.yaml): what this server is and can do, how much it holds, a test email, and
+//! For admins (`system` in api/openapi.json): what this server is and can do, how much it holds, a test email, and
 //! the checklist for setting notenwart up.
 
 use serde::{Deserialize, Serialize};
@@ -12,9 +12,43 @@ use crate::error::{AppError, AppResult};
 /// Steps admins tick off themselves.
 const MANUAL: [&str; 3] = ["instruments", "backups", "testMail"];
 
-#[derive(Debug, Serialize)]
+/// The steps of the checklist, as the API names them.
+#[derive(Debug)]
+pub struct StepKey;
+
+impl crate::schema::Strings for StepKey {
+    const VALUES: &[&str] =
+        &["logo", "instruments", "ensembles", "people", "music", "mail", "testMail", "sso", "backups"];
+}
+
+/// The steps admins tick off themselves, as the API names them.
+#[derive(Debug)]
+pub struct ManualStep;
+
+impl crate::schema::Strings for ManualStep {
+    const VALUES: &[&str] = &MANUAL;
+}
+
+impl utoipa::PartialSchema for ManualStep {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::Schema> {
+        crate::schema::strings::<ManualStep>().into()
+    }
+}
+
+impl utoipa::ToSchema for ManualStep {}
+
+/// The languages of emails, as the API names them.
+#[derive(Debug)]
+pub struct LanguageName;
+
+impl crate::schema::Strings for LanguageName {
+    const VALUES: &[&str] = &["en", "de"];
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Step {
+    #[schema(schema_with = crate::schema::strings::<StepKey>)]
     key: &'static str,
     done: bool,
     /// Not needed for every organisation.
@@ -23,7 +57,7 @@ pub struct Step {
     manual: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Counts {
     people: i64,
@@ -35,20 +69,25 @@ pub struct Counts {
     stored_bytes: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct System {
     version: &'static str,
     public_url: String,
+    #[schema(schema_with = crate::schema::strings::<LanguageName>)]
     language: &'static str,
+    /// s3 or fs.
     storage: &'static str,
     max_upload_bytes: usize,
     /// The sender of emails; none when the server sends none.
     mail_from: Option<String>,
     recognition: crate::recognize::Abilities,
+    /// The external AI reading pages, if any.
     ai: Option<String>,
     sso: Option<String>,
+    #[schema(inline)]
     counts: Counts,
+    #[schema(inline)]
     checklist: Vec<Step>,
 }
 
@@ -108,7 +147,7 @@ pub async fn system(state: &App, user: &CurrentUser) -> AppResult<System> {
     })
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct TestMail {
     sent: bool,
     to: String,
@@ -143,7 +182,7 @@ pub async fn test_mail(state: &App, user: &CurrentUser) -> AppResult<TestMail> {
     Ok(TestMail { sent, to: user.email.clone() })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct TickInput {
     done: bool,
 }

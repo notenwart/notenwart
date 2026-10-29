@@ -27,7 +27,7 @@ base-uri 'none'; form-action 'self'";
 /// The page shown where the web app is not built into the binary – without styles, which the policy would block.
 const NO_WEB_APP: &str = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>notenwart</title>\
 <body><h1>notenwart</h1>\
-<p>The API runs at <code>/api</code>, described in <code>api/openapi.yaml</code>. This build has no web app \
+<p>The API runs at <code>/api</code>, described in <code>/api/openapi.json</code>. This build has no web app \
 – run <code>pnpm --dir web build</code> and build again.</p>";
 
 pub async fn serve(uri: Uri) -> Response {

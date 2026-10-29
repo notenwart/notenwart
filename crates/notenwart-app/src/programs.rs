@@ -16,10 +16,11 @@ const MAX_WORKS: usize = 200;
 
 // ---- programmes ----
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ProgramInput {
     name: String,
+    #[schema(format = Date)]
     date: Option<String>,
     /// "19:30".
     start_time: Option<String>,
@@ -76,7 +77,7 @@ impl ProgramInput {
 }
 
 /// One entry of a programme in playing order: a work, or a break (interval, speech).
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, utoipa::ToSchema)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ProgramItem {
     #[serde(rename_all = "camelCase")]
@@ -85,18 +86,20 @@ pub enum ProgramItem {
     Break { label: String, duration_seconds: Option<i32>, note: Option<String> },
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Program {
     id: Uuid,
     ensemble_id: Uuid,
     name: String,
+    #[schema(format = Date)]
     date: Option<String>,
     start_time: Option<String>,
     venue: Option<String>,
     notes: Option<String>,
     /// The works in playing order (also in `items`).
     work_ids: Vec<Uuid>,
+    /// Works and breaks in playing order.
     items: Vec<ProgramItem>,
 }
 
@@ -252,7 +255,7 @@ pub async fn remove(state: &App, user: &CurrentUser, program_id: Uuid) -> AppRes
     Ok(())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum ItemInput {
     #[serde(rename_all = "camelCase")]
@@ -261,8 +264,9 @@ pub enum ItemInput {
     Break { label: String, duration_seconds: Option<i32>, note: Option<String> },
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct ItemsInput {
+    #[schema(value_type = Vec<ProgramItem>)]
     items: Vec<ItemInput>,
 }
 
@@ -352,7 +356,7 @@ pub async fn set_items(state: &App, user: &CurrentUser, program_id: Uuid, input:
 
 // ---- parts and grants ----
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct EnsemblePart {
     id: Uuid,
@@ -379,7 +383,7 @@ pub async fn ensemble_parts(state: &App, user: &CurrentUser, ensemble_id: Uuid) 
     Ok(parts)
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Grant {
     part_id: Uuid,

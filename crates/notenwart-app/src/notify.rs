@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Notifications (`notifications` in api/openapi.yaml): something happened for someone – new parts, a changed
+//! Notifications (`notifications` in api/openapi.json): something happened for someone – new parts, a changed
 //! programme, a loan due, markings shared by a leader, a guest link about to expire. Each person decides per kind
 //! whether it shows in the app, comes by email, or (later) by push. Emails are collected for a few minutes and sent
 //! as one message, so twenty new parts make one email, not twenty.
@@ -18,8 +18,9 @@ use crate::auth::CurrentUser;
 use crate::error::{AppError, AppResult};
 use crate::mail::{Language, send_or_log};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(as = NotificationKind)]
 pub enum Kind {
     /// Parts became visible to the person (uploaded, given to their ensemble, granted).
     PartsNew,
@@ -57,7 +58,7 @@ impl Kind {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Channels {
     pub in_app: bool,
@@ -161,26 +162,33 @@ pub async fn ensemble_members(state: &App, ensemble_id: Uuid, but: Uuid) -> Vec<
 
 // ---- the inbox ----
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Notification {
     id: Uuid,
+    #[schema(value_type = Kind)]
     kind: String,
+    /// What the text is made of, by kind – partsNew: work, part (missing when a whole work was given);
+    /// programChanged: program, ensemble; loanDue: work, item, date, overdue; annotationsShared: by, part, work;
+    /// guestLinkExpiring: guest, date.
+    #[schema(value_type = std::collections::HashMap<String, serde_json::Value>)]
     params: Value,
+    /// A path of the web app.
     link: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
     created_at: OffsetDateTime,
     read: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Inbox {
     unread: i64,
     items: Vec<Notification>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct InboxQuery {
     /// Only the number of unread ones (for the bell).
     count: Option<bool>,
@@ -214,7 +222,7 @@ pub async fn inbox(state: &App, user: &CurrentUser, query: InboxQuery) -> AppRes
     Ok(Inbox { unread, items })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct ReadInput {
     /// These; all when missing.
     ids: Option<Vec<Uuid>>,
@@ -232,11 +240,13 @@ pub async fn mark_read(state: &App, user: &CurrentUser, input: ReadInput) -> App
     Ok(())
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(as = NotificationSetting)]
 pub struct Setting {
     kind: Kind,
     #[serde(flatten)]
+    #[schema(inline)]
     channels: Channels,
 }
 

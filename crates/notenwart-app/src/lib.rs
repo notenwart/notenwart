@@ -6,7 +6,8 @@
 //! A command is a function of a feature module that takes the [`App`], the caller ([`auth::CurrentUser`], found by
 //! the interface – the API by the session cookie) and its input, checks the caller's role, and answers with plain
 //! data or an [`error::AppError`]. Nothing here knows HTTP: status codes, cookies, headers and multipart forms are
-//! the API's part. Inputs and results derive serde, as the API sends them as JSON (`api/openapi.yaml`).
+//! the API's part. Inputs and results derive serde, as the API sends them as JSON, and `utoipa::ToSchema`, which
+//! describes them in the API's description (`api/openapi.json`) under the names given there.
 
 pub mod ai;
 pub mod annotations;
@@ -27,6 +28,7 @@ pub mod privacy;
 pub mod programs;
 pub mod recognize;
 pub mod recordings;
+pub mod schema;
 pub mod sso;
 pub mod system;
 

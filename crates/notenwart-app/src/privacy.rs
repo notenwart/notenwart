@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Data protection (`privacy` in api/openapi.yaml): everything stored about a person as one download (GDPR art. 15
+//! Data protection (`privacy` in api/openapi.json): everything stored about a person as one download (GDPR art. 15
 //! and 20), and deleting people with a record that it happened but without their data.
 
 use serde::Serialize;
@@ -166,13 +166,17 @@ pub async fn delete_users(
     Ok(())
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Deletion {
+    /// Id of the deleted account (nothing else about the person is kept).
     user_id: Uuid,
+    /// Name of the admin who deleted it, while that account exists.
     deleted_by: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
     deleted_at: OffsetDateTime,
+    /// How many records went with the account, by kind.
+    #[schema(value_type = std::collections::HashMap<String, i64>)]
     records: Value,
 }
 

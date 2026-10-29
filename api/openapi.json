@@ -1,0 +1,7045 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "notenwart API",
+    "description": "Sign-in sets an HTTP-only session cookie; every endpoint except `/health` and `/auth/*` needs it and acts on\nthe signed-in user's organisation. Requests that change something and carry an `Origin` header must come from\nthe server's own origin.\n\nRoles: **admin** (everything), **librarian** (library and ensembles), **leader** (reads the library, manages\nthe ensembles they lead), **member** (sees their own parts). A member sees a part when one of their ensembles\nhas the part's work and they play its instrument there – any part number, or the same one – or when a leader\ngranted them that part in the ensemble; parts without an instrument (full score, …) are for leaders.\n",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Server and database status",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "The server and its database are up.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The server runs, but the database is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/status": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Whether the server needs setup, and who is signed in",
+        "operationId": "getAuthStatus",
+        "responses": {
+          "200": {
+            "description": "Status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStatus"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/setup": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create the first admin (only while the server has no users) and sign in",
+        "operationId": "setup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Set up and signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign in with email and password",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/magic-link": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Email a one-time sign-in link",
+        "description": "Answers 204 whether or not the address is known, so it cannot be used to probe for accounts.",
+        "operationId": "requestMagicLink",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "If the address belongs to a user, a link is on its way (valid for 20 minutes)."
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/token": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign in with a one-time token from a sign-in or invitation link",
+        "operationId": "redeemToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in; the token is used up.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign out",
+        "operationId": "logout",
+        "responses": {
+          "204": {
+            "description": "Signed out."
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "The signed-in user",
+        "operationId": "getMe",
+        "responses": {
+          "200": {
+            "description": "The user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change own name or password",
+        "operationId": "updateMe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/ensembles/{ensembleId}/programs": {
+      "post": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Create a programme, e.g. a concert (admin, librarian, leaders of the ensemble)",
+        "operationId": "createProgram",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created, without works.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Program"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/programs/{programId}": {
+      "put": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Rename or re-date a programme (admin, librarian, leaders of the ensemble)",
+        "operationId": "updateProgram",
+        "parameters": [
+          {
+            "name": "programId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Program"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Delete a programme (the works stay with the ensemble)",
+        "operationId": "deleteProgram",
+        "parameters": [
+          {
+            "name": "programId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/programs/{programId}/items": {
+      "put": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Set the works and breaks of a programme in playing order (admin, librarian, leaders of the ensemble)",
+        "description": "Works the ensemble does not have yet are given to it.",
+        "operationId": "setProgramItems",
+        "parameters": [
+          {
+            "name": "programId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "items"
+                ],
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ProgramItem"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Program"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/ensembles/{ensembleId}/parts": {
+      "get": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "The parts of the ensemble's works, for granting (admin, librarian, leaders of the ensemble)",
+        "operationId": "listEnsembleParts",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Parts by work title.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnsemblePart"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/ensembles/{ensembleId}/grants": {
+      "get": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Parts granted to single members of the ensemble (admin, librarian, leaders of the ensemble)",
+        "operationId": "listGrants",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Grants.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Grant"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/ensembles/{ensembleId}/grants/{partId}/{userId}": {
+      "put": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Let one member see one part of an ensemble's work (admin, librarian, leaders of the ensemble)",
+        "operationId": "grantPart",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Granted."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Take a granted part back",
+        "operationId": "revokePart",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Revoked."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/my/music": {
+      "get": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "The parts the signed-in user may see, by ensemble and work",
+        "operationId": "getMyMusic",
+        "responses": {
+          "200": {
+            "description": "One entry per ensemble the user belongs to.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyEnsemble"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Users of the organisation (admin, librarian, leader; email only for admins)",
+        "operationId": "listUsers",
+        "responses": {
+          "200": {
+            "description": "Users ordered by name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Add a user and create an invitation link (admin)",
+        "operationId": "createUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created; the link is also emailed when the server can send mail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/users/import": {
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Import people from a table (admin)",
+        "description": "Each row adds a person (or finds an existing one by email) and optionally puts them in an ensemble, playing an\ninstrument and part number. Missing ensembles are created. Nothing is changed when any row has an error: the\nanswer is then 422 with the results per row. With `dryRun`, nothing is changed either, and the answer is 200.\nNew people get an invitation link (emailed when the server can send mail).",
+        "operationId": "importUsers",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Checked (dry run) or imported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "description": "At least one row has an error; nothing was imported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/bulk": {
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Do one thing to many people at once (admin)",
+        "description": "One transaction. Changing the role of or deleting yourself is skipped and reported, as are ids that are\nnot people of the organisation.",
+        "operationId": "bulkUsers",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/users/{userId}": {
+      "put": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Change a user's name, email or role (admin)",
+        "operationId": "updateUser",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Delete a user (admin; not yourself)",
+        "operationId": "deleteUser",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "The person has borrowed printed parts that are not returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}/invitation": {
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Create a new invitation link for a user (admin); older links stop working",
+        "operationId": "inviteUser",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/ensembles": {
+      "get": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Ensembles – all for admins and librarians, otherwise the user's own",
+        "operationId": "listEnsembles",
+        "responses": {
+          "200": {
+            "description": "Ensembles ordered by name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Ensemble"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Create an ensemble (admin, librarian)",
+        "operationId": "createEnsemble",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnsembleInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ensemble"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/ensembles/{ensembleId}": {
+      "get": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "An ensemble with members and works",
+        "description": "Members other than the user themself are only listed for those who manage the ensemble.",
+        "operationId": "getEnsemble",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The ensemble.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnsembleDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Rename an ensemble (admin, librarian, its leaders)",
+        "operationId": "updateEnsemble",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnsembleInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ensemble"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Delete an ensemble (admin, librarian); works and users stay",
+        "operationId": "deleteEnsemble",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/ensembles/{ensembleId}/members/{userId}": {
+      "put": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Add or change a member (admin, librarian, leaders of the ensemble)",
+        "description": "Only admins and librarians may make someone a leader, and only users with the role leader or higher.",
+        "operationId": "putEnsembleMember",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnsembleMemberInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnsembleMember"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Remove a member (admin, librarian, leaders of the ensemble)",
+        "operationId": "deleteEnsembleMember",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/ensembles/{ensembleId}/works/{workId}": {
+      "put": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Give a work to an ensemble (admin, librarian, leaders of the ensemble)",
+        "operationId": "addEnsembleWork",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The ensemble has the work."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ensembles"
+        ],
+        "summary": "Take a work from an ensemble (admin, librarian, leaders of the ensemble)",
+        "operationId": "removeEnsembleWork",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/instruments": {
+      "get": {
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "The organisation's instruments (any signed-in user)",
+        "operationId": "listInstruments",
+        "responses": {
+          "200": {
+            "description": "All instruments, ordered by family, then by their order within it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Instrument"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "Add an instrument (admin, librarian)",
+        "operationId": "createInstrument",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstrumentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Instrument"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/instruments/{instrumentId}": {
+      "put": {
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "Rename, regroup or reorder an instrument (admin, librarian)",
+        "operationId": "updateInstrument",
+        "parameters": [
+          {
+            "name": "instrumentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstrumentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Instrument"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "Remove an instrument that no part or member uses (admin, librarian)",
+        "operationId": "deleteInstrument",
+        "parameters": [
+          {
+            "name": "instrumentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/instruments/{instrumentId}/merge": {
+      "post": {
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "Fold an instrument into another (admin, librarian)",
+        "description": "Parts, members' assignments and recordings move to `into`; the instrument's name and other names become other names of `into`; the instrument is deleted.",
+        "operationId": "mergeInstrument",
+        "parameters": [
+          {
+            "name": "instrumentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "into"
+                ],
+                "properties": {
+                  "into": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The instrument that stays."
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The instrument that stays.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Instrument"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/instrument-families": {
+      "get": {
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "The organisation's instrument families (any signed-in user)",
+        "operationId": "listInstrumentFamilies",
+        "responses": {
+          "200": {
+            "description": "All families in their order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InstrumentFamily"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "Add a family (admin, librarian)",
+        "operationId": "createInstrumentFamily",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstrumentFamilyInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstrumentFamily"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/instrument-families/{familyId}": {
+      "put": {
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "Rename or reorder a family (admin, librarian)",
+        "operationId": "updateInstrumentFamily",
+        "parameters": [
+          {
+            "name": "familyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstrumentFamilyInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstrumentFamily"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "Remove a family without instruments (admin, librarian)",
+        "operationId": "deleteInstrumentFamily",
+        "parameters": [
+          {
+            "name": "familyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/tags": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "All tags used on works, for filters",
+        "operationId": "listTags",
+        "responses": {
+          "200": {
+            "description": "Tags in alphabetical order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recognize": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Read title, composer, part … from the first page of a PDF (admin, librarian)",
+        "description": "Nothing is stored. The PDF's own text is read, scans go through OCR, and an external AI also reads the page if the operator set one up. Every field is a suggestion and may be missing.",
+        "operationId": "recognize",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "description": "A form with one file. It only describes the request; the handler reads the form itself.",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "One file. The server's upload limit applies (413 when exceeded)."
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "What was found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recognition"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/loans": {
+      "get": {
+        "tags": [
+          "loans"
+        ],
+        "summary": "Loans of the organisation (admin, librarian)",
+        "operationId": "listLoans",
+        "parameters": [
+          {
+            "name": "show",
+            "in": "query",
+            "description": "`open` (default) leaves out returned loans.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "all"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Open loans first, the longest out on top.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Loan"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/loans/{loanId}": {
+      "put": {
+        "tags": [
+          "loans"
+        ],
+        "summary": "Change a loan, e.g. mark it returned (admin, librarian)",
+        "operationId": "updateLoan",
+        "parameters": [
+          {
+            "name": "loanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoanInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Loan"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "loans"
+        ],
+        "summary": "Delete a loan entered by mistake (admin, librarian)",
+        "operationId": "deleteLoan",
+        "parameters": [
+          {
+            "name": "loanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/works/{workId}/loans": {
+      "get": {
+        "tags": [
+          "loans"
+        ],
+        "summary": "Loans of one work, returned ones included (admin, librarian)",
+        "operationId": "listWorkLoans",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Open loans first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Loan"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "loans"
+        ],
+        "summary": "Lend printed parts of a work (admin, librarian)",
+        "operationId": "createLoan",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoanInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Loan"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/me/loans": {
+      "get": {
+        "tags": [
+          "loans"
+        ],
+        "summary": "What the signed-in user has borrowed and not returned (anyone)",
+        "operationId": "myLoans",
+        "responses": {
+          "200": {
+            "description": "Open loans.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Loan"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/borrowers": {
+      "get": {
+        "tags": [
+          "loans"
+        ],
+        "summary": "Names of the organisation's people, for choosing a borrower (admin, librarian)",
+        "operationId": "listBorrowers",
+        "responses": {
+          "200": {
+            "description": "By name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Borrower"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/auth/sso/start": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Begin signing in through the organisation's identity provider (a browser navigation)",
+        "operationId": "startSso",
+        "parameters": [
+          {
+            "name": "next",
+            "in": "query",
+            "description": "Path to return to afterwards; only paths of this site.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "To the provider (OpenID Connect, authorization code with PKCE)."
+          },
+          "404": {
+            "description": "No identity provider is set up."
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/sso/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Where the identity provider sends the browser back",
+        "description": "Only people who exist in notenwart get in, found by the email address the provider vouches for. Failures redirect to `/login?sso=unknown` (not known here) or `/login?sso=failed`.",
+        "operationId": "finishSso",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Signed in (session cookie set) and on to `next`, or back to the sign-in page."
+          },
+          "404": {
+            "description": "No identity provider is set up."
+          }
+        },
+        "security": []
+      }
+    },
+    "/system": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "The server's version, settings, abilities, size and the setup checklist (admin)",
+        "operationId": "getSystem",
+        "responses": {
+          "200": {
+            "description": "The system.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/System"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/system/test-mail": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Send a test email to oneself (admin)",
+        "operationId": "sendTestMail",
+        "responses": {
+          "200": {
+            "description": "Whether the SMTP server took it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "sent",
+                    "to"
+                  ],
+                  "properties": {
+                    "sent": {
+                      "type": "boolean"
+                    },
+                    "to": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The server sends no email."
+          }
+        }
+      }
+    },
+    "/system/checklist/{key}": {
+      "put": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Tick or untick a setup step that is not recognised by itself (admin)",
+        "operationId": "tickSetupStep",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "instruments",
+                "backups",
+                "testMail"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "done"
+                ],
+                "properties": {
+                  "done": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Saved."
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/images/{imageId}": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "An avatar image (the organisation's logo for anyone; others for signed-in people allowed to see them)",
+        "operationId": "getImage",
+        "parameters": [
+          {
+            "name": "imageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The image.",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "A file as it is sent or received: any bytes."
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": []
+      }
+    },
+    "/organization": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "The organisation (anyone signed in)",
+        "operationId": "getOrganization",
+        "responses": {
+          "200": {
+            "description": "Name, logo and settings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Rename the organisation, allow or forbid profile pictures (admin)",
+        "operationId": "updateOrganization",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "profilePictures"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "profilePictures": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/organization/logo": {
+      "put": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Set the organisation's logo (admin)",
+        "operationId": "setOrganizationLogo",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "description": "A form with one file. It only describes the request; the handler reads the form itself.",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "One file. The server's upload limit applies (413 when exceeded)."
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Remove the organisation's logo (admin)",
+        "operationId": "removeOrganizationLogo",
+        "responses": {
+          "204": {
+            "description": "Removed."
+          }
+        }
+      }
+    },
+    "/ensembles/{ensembleId}/logo": {
+      "put": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Set an ensemble's logo (admin, librarian, leaders of the ensemble)",
+        "operationId": "setEnsembleLogo",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "description": "A form with one file. It only describes the request; the handler reads the form itself.",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "One file. The server's upload limit applies (413 when exceeded)."
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Saved."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Remove an ensemble's logo (admin, librarian, leaders of the ensemble)",
+        "operationId": "removeEnsembleLogo",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed."
+          }
+        }
+      }
+    },
+    "/ensembles/{ensembleId}/symbol": {
+      "put": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Set an ensemble's symbol and colour (admin, librarian, leaders of the ensemble)",
+        "operationId": "setEnsembleSymbol",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "symbol": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "An emoji (or a few characters); null for initials."
+                  },
+                  "color": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "\"#RRGGBB\"; null for the colour derived from the name."
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Saved."
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/me/avatar": {
+      "put": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Set one's own picture (anyone, if the organisation allows pictures)",
+        "operationId": "setMyAvatar",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "description": "A form with one file. It only describes the request; the handler reads the form itself.",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "One file. The server's upload limit applies (413 when exceeded)."
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Saved."
+          },
+          "409": {
+            "description": "The organisation has switched profile pictures off."
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Remove one's own picture (anyone)",
+        "operationId": "removeMyAvatar",
+        "responses": {
+          "204": {
+            "description": "Removed."
+          }
+        }
+      }
+    },
+    "/works/{workId}/recordings": {
+      "get": {
+        "tags": [
+          "recordings"
+        ],
+        "summary": "Recordings of a work (whoever sees a part of it)",
+        "operationId": "listRecordings",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full recordings first, then practice recordings, by title.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Recording"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "recordings"
+        ],
+        "summary": "Add a recording (admin, librarian, leaders of an ensemble with the work)",
+        "operationId": "uploadRecording",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "description": "The form of a new recording. It only describes the request; the handler reads the form itself.",
+                "required": [
+                  "file",
+                  "meta"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The audio file."
+                  },
+                  "meta": {
+                    "type": "string",
+                    "description": "RecordingInput as JSON."
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recording"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "description": "Larger than the server allows."
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/recordings/{recordingId}": {
+      "put": {
+        "tags": [
+          "recordings"
+        ],
+        "summary": "Change what a recording is (admin, librarian, leaders of an ensemble with the work)",
+        "operationId": "updateRecording",
+        "parameters": [
+          {
+            "name": "recordingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recording"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "recordings"
+        ],
+        "summary": "Delete a recording (admin, librarian, leaders of an ensemble with the work)",
+        "operationId": "deleteRecording",
+        "parameters": [
+          {
+            "name": "recordingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/recordings/{recordingId}/file": {
+      "get": {
+        "tags": [
+          "recordings"
+        ],
+        "summary": "The audio (whoever sees a part of the work); supports Range requests",
+        "operationId": "recordingFile",
+        "parameters": [
+          {
+            "name": "recordingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "description": "One byte range, e.g. `bytes=0-`.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The whole file.",
+            "content": {
+              "audio/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "A file as it is sent or received: any bytes."
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "The requested range."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "416": {
+            "description": "The range cannot be served."
+          }
+        }
+      }
+    },
+    "/ensembles/{ensembleId}/guest-links": {
+      "get": {
+        "tags": [
+          "guests"
+        ],
+        "summary": "Guest links of an ensemble (admin, librarian, leaders of the ensemble)",
+        "operationId": "listGuestLinks",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GuestLink"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "guests"
+        ],
+        "summary": "Make a guest link (admin, librarian, leaders of the ensemble)",
+        "operationId": "createGuestLink",
+        "parameters": [
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "partIds",
+                  "expiresOn"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "partIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "expiresOn": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created; `url` is shown this once (only its hash is stored).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestLink"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/guest-links/{linkId}": {
+      "delete": {
+        "tags": [
+          "guests"
+        ],
+        "summary": "Stop a guest link (admin, librarian, leaders of the ensemble)",
+        "operationId": "revokeGuestLink",
+        "parameters": [
+          {
+            "name": "linkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "It no longer works."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/guest/{token}": {
+      "get": {
+        "tags": [
+          "guests"
+        ],
+        "summary": "What a guest link shows (no account)",
+        "operationId": "openGuestLink",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The guest's parts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, expired or revoked (indistinguishable)."
+          }
+        },
+        "security": []
+      }
+    },
+    "/guest/{token}/parts/{partId}/file": {
+      "get": {
+        "tags": [
+          "guests"
+        ],
+        "summary": "A part's PDF through a guest link (no account)",
+        "operationId": "guestPartFile",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The PDF.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "A file as it is sent or received: any bytes."
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": []
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "The signed-in user's notifications in the app (anyone)",
+        "operationId": "listNotifications",
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "description": "Only the number of unread ones (for the bell).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest first, at most 100.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Inbox"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/read": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Mark notifications read (anyone)",
+        "operationId": "markNotificationsRead",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ids": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "description": "These; all when missing."
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Done."
+          }
+        }
+      }
+    },
+    "/notifications/settings": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "How the signed-in user hears about each kind (anyone)",
+        "operationId": "getNotificationSettings",
+        "responses": {
+          "200": {
+            "description": "One setting per kind that concerns the user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationSetting"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Change how the signed-in user hears about some kinds (anyone)",
+        "operationId": "saveNotificationSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/NotificationSetting"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "All settings after the change.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationSetting"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/export": {
+      "get": {
+        "tags": [
+          "privacy"
+        ],
+        "summary": "Everything stored about the signed-in user (anyone; GDPR art. 15 and 20)",
+        "operationId": "exportMyData",
+        "responses": {
+          "200": {
+            "description": "Account, ensembles, single parts, annotations, loans and sign-ins.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}/export": {
+      "get": {
+        "tags": [
+          "privacy"
+        ],
+        "summary": "Everything stored about a person (admin)",
+        "operationId": "exportUserData",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "As /me/export.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalData"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/deletions": {
+      "get": {
+        "tags": [
+          "privacy"
+        ],
+        "summary": "Record of deleted people, without their data (admin)",
+        "operationId": "listDeletions",
+        "responses": {
+          "200": {
+            "description": "Newest first, at most 1000.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Deletion"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/works/facets": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Values already used on works, for suggestions while typing (anyone who reads the library)",
+        "operationId": "getWorkFacets",
+        "responses": {
+          "200": {
+            "description": "Each list is ordered by how often the value is used, then alphabetically.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkFacets"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/works": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "List and search works (admin, librarian, leader)",
+        "operationId": "listWorks",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Matches title, composer and arranger (case-insensitive, substring).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "description": "Only works with this tag.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Works ordered by title.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Create a work (admin, librarian)",
+        "operationId": "createWork",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Work"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/works/{workId}": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "A work with its source files and parts (admin, librarian, leader)",
+        "operationId": "getWork",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The work.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Replace a work's metadata (admin, librarian)",
+        "operationId": "updateWork",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Work"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Delete a work with all its files and parts (admin, librarian)",
+        "operationId": "deleteWork",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/works/{workId}/sources": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Upload a PDF to a work (admin, librarian)",
+        "operationId": "uploadSource",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "description": "A form with one file. It only describes the request; the handler reads the form itself.",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "One file. The server's upload limit applies (413 when exceeded)."
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceFile"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "The same file (by SHA-256) is already part of this work.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The file is larger than the server allows."
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/sources/{sourceId}": {
+      "delete": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Delete a source file and every part split from it (admin, librarian)",
+        "operationId": "deleteSource",
+        "parameters": [
+          {
+            "name": "sourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/sources/{sourceId}/recognize": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Read title, composer, part … from the first page of a stored file (admin, librarian)",
+        "operationId": "recognizeSource",
+        "parameters": [
+          {
+            "name": "sourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What was found; nothing is changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recognition"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/sources/{sourceId}/split": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Propose the parts of a file with several, from each page's header (admin, librarian)",
+        "description": "Reads the top of every page (text, or OCR for scans; at most 400 pages). A page naming an instrument starts a part unless it repeats the previous one; pages without a header continue the current part. Nothing is created.",
+        "operationId": "splitSource",
+        "parameters": [
+          {
+            "name": "sourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Proposed parts in page order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PartProposal"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/sources/{sourceId}/file": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "The uploaded PDF (admin, librarian, leader)",
+        "operationId": "getSourceFile",
+        "parameters": [
+          {
+            "name": "sourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The PDF as uploaded.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "A file as it is sent or received: any bytes."
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/works/{workId}/parts": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Split a part from a source file (admin, librarian)",
+        "description": "The server extracts the given pages into the part's own PDF.",
+        "operationId": "createPart",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created and rendered.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Part"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/parts/{partId}": {
+      "put": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Change a part, rendering its PDF again (admin, librarian)",
+        "operationId": "updatePart",
+        "parameters": [
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Part"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Delete a part (admin, librarian)",
+        "operationId": "deletePart",
+        "parameters": [
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/parts/{partId}/info": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "What the viewer shows about a part (anyone who may see the part)",
+        "operationId": "getPartInfo",
+        "parameters": [
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The part.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/parts/{partId}/shared-annotations": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Markings leaders share on a part, one layer per ensemble (whoever sees the part)",
+        "description": "The layers of the user's ensembles that have the work (staff: all such ensembles); empty layers only where the user may start one.",
+        "operationId": "getSharedAnnotations",
+        "parameters": [
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "By ensemble name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SharedAnnotations"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/parts/{partId}/shared-annotations/{ensembleId}": {
+      "put": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Replace an ensemble's shared markings on a part (leaders of the ensemble, admin, librarian)",
+        "description": "Players are notified of changes at most twice an hour.",
+        "operationId": "saveSharedAnnotations",
+        "parameters": [
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ensembleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationsInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedAnnotations"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/parts/{partId}/annotated": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "The part's PDF with annotations drawn in, for printing or keeping (whoever sees the part)",
+        "operationId": "annotatedPartFile",
+        "parameters": [
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "own",
+            "in": "query",
+            "description": "The user's own annotations (default yes).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "shared",
+            "in": "query",
+            "description": "The leaders' shared markings (default yes).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A copy with the strokes as vector paths; the stored PDF is not changed.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "A file as it is sent or received: any bytes."
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/parts/{partId}/annotations": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "The signed-in user's annotations on a part (anyone who may see the part)",
+        "operationId": "getAnnotations",
+        "parameters": [
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Annotations; empty pages and a null `updatedAt` when there are none yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Annotations"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Replace the signed-in user's annotations on a part",
+        "description": "The last write wins – a device that edited offline sends its whole set when it is back online.",
+        "operationId": "putAnnotations",
+        "parameters": [
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationsInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Annotations"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        }
+      }
+    },
+    "/parts/{partId}/file": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "The part's PDF (anyone who may see the part)",
+        "operationId": "getPartFile",
+        "parameters": [
+          {
+            "name": "partId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The extracted pages.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "A file as it is sent or received: any bytes."
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Annotations": {
+        "type": "object",
+        "required": [
+          "pages",
+          "updatedAt"
+        ],
+        "properties": {
+          "pages": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/Stroke"
+              }
+            },
+            "propertyNames": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "AnnotationsInput": {
+        "type": "object",
+        "required": [
+          "pages"
+        ],
+        "properties": {
+          "pages": {
+            "type": "object",
+            "description": "Strokes by page number (\"1\", \"2\", …), in drawing order.",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/Stroke"
+              }
+            },
+            "propertyNames": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "AuthStatus": {
+        "type": "object",
+        "required": [
+          "setupRequired",
+          "mailEnabled",
+          "maxUploadBytes",
+          "recognition"
+        ],
+        "properties": {
+          "setupRequired": {
+            "type": "boolean",
+            "description": "The server has no users yet; `/auth/setup` creates the first admin."
+          },
+          "mailEnabled": {
+            "type": "boolean",
+            "description": "The server can send email (sign-in links, invitations)."
+          },
+          "maxUploadBytes": {
+            "type": "integer",
+            "description": "Largest PDF the server accepts in one upload.",
+            "minimum": 0
+          },
+          "recognition": {
+            "$ref": "#/components/schemas/RecognitionAbilities"
+          },
+          "sso": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Name of the identity provider to sign in with, if one is set up."
+          },
+          "organization": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "logoUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The organisation's name and logo, for the sign-in page."
+          },
+          "user": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Me"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "Borrower": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "BulkInput": {
+        "type": "object",
+        "required": [
+          "userIds",
+          "action"
+        ],
+        "properties": {
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "setRole",
+              "addToEnsemble",
+              "removeFromEnsemble",
+              "invite",
+              "delete"
+            ]
+          },
+          "role": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ensembleId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "For addToEnsemble and removeFromEnsemble."
+          },
+          "instrumentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "For addToEnsemble – also play this instrument there."
+          },
+          "voice": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "BulkResult": {
+        "type": "object",
+        "required": [
+          "done",
+          "skipped",
+          "invitations"
+        ],
+        "properties": {
+          "done": {
+            "type": "integer",
+            "description": "People the action was applied to.",
+            "minimum": 0
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "userId",
+                "reason"
+              ],
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "invitations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "userId",
+                "name",
+                "email",
+                "url"
+              ],
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "New invitation links (action invite)."
+          }
+        }
+      },
+      "Deletion": {
+        "type": "object",
+        "required": [
+          "userId",
+          "deletedAt",
+          "records"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of the deleted account (nothing else about the person is kept)."
+          },
+          "deletedBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Name of the admin who deleted it, while that account exists."
+          },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "records": {
+            "type": "object",
+            "description": "How many records went with the account, by kind.",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Ensemble": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "memberCount",
+          "workCount",
+          "canManage"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logoUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Path of the logo image, if any."
+          },
+          "symbol": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "An emoji shown when there is no logo."
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "memberCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "workCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "canManage": {
+            "type": "boolean",
+            "description": "The user may change members and works."
+          }
+        }
+      },
+      "EnsembleDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Ensemble"
+          },
+          {
+            "type": "object",
+            "required": [
+              "members",
+              "works",
+              "programs"
+            ],
+            "properties": {
+              "members": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/EnsembleMember"
+                }
+              },
+              "works": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/EnsembleWork"
+                }
+              },
+              "programs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Program"
+                },
+                "description": "Programmes by date, undated last."
+              }
+            }
+          }
+        ]
+      },
+      "EnsembleInput": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "EnsembleMember": {
+        "type": "object",
+        "required": [
+          "userId",
+          "name",
+          "leader",
+          "plays"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "leader": {
+            "type": "boolean"
+          },
+          "plays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayedPart"
+            }
+          }
+        }
+      },
+      "EnsembleMemberInput": {
+        "type": "object",
+        "required": [
+          "leader",
+          "plays"
+        ],
+        "properties": {
+          "leader": {
+            "type": "boolean"
+          },
+          "plays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayedPart"
+            }
+          }
+        }
+      },
+      "EnsemblePart": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "workId",
+          "workTitle"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          },
+          "instrumentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "voice": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "workId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workTitle": {
+            "type": "string"
+          }
+        }
+      },
+      "EnsembleRef": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "EnsembleWork": {
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "composer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "arranger": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "publisher": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lyricist": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "societyNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "durationSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "What went wrong (the `Error` schema).",
+        "required": [
+          "error",
+          "message"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Machine-readable code, e.g. `unauthorized`, `forbidden`, `not_found`, `invalid`, `conflict`."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable explanation (English)."
+          }
+        }
+      },
+      "Grant": {
+        "type": "object",
+        "required": [
+          "partId",
+          "userId",
+          "label",
+          "workTitle",
+          "userName"
+        ],
+        "properties": {
+          "partId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          },
+          "workTitle": {
+            "type": "string"
+          },
+          "userName": {
+            "type": "string"
+          }
+        }
+      },
+      "GuestLink": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "partIds",
+          "expiresOn",
+          "revoked"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "partIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "expiresOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "revoked": {
+            "type": "boolean"
+          },
+          "createdBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "description": "Only when just created: the link itself (the server keeps only its hash)."
+          }
+        }
+      },
+      "GuestView": {
+        "type": "object",
+        "required": [
+          "name",
+          "ensemble",
+          "expiresOn",
+          "parts"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "ensemble": {
+            "type": "string"
+          },
+          "expiresOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "label",
+                "workTitle",
+                "pageCount"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "workTitle": {
+                  "type": "string"
+                },
+                "composer": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pageCount": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Health": {
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "database"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ]
+          },
+          "version": {
+            "type": "string",
+            "description": "Server version (semver)."
+          },
+          "database": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "unavailable"
+            ]
+          }
+        }
+      },
+      "ImportInput": {
+        "type": "object",
+        "required": [
+          "rows",
+          "dryRun"
+        ],
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportRow"
+            }
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ImportResult": {
+        "type": "object",
+        "required": [
+          "applied",
+          "rows",
+          "newPeople",
+          "ensemblesCreated",
+          "errors"
+        ],
+        "properties": {
+          "applied": {
+            "type": "boolean"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportRowResult"
+            }
+          },
+          "newPeople": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ensemblesCreated": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "integer",
+            "description": "Rows with errors.",
+            "minimum": 0
+          }
+        }
+      },
+      "ImportRow": {
+        "type": "object",
+        "required": [
+          "name",
+          "email"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "admin, librarian, leader or member (also German – Admin, Notenverwaltung, Leitung, Mitglied); empty means\nmember. Ignored for existing people."
+          },
+          "ensemble": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Ensemble name; created when missing."
+          },
+          "instrument": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Instrument name or alias (English or German, e.g. \"Trompete\"); needs an ensemble."
+          },
+          "voice": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Part number; empty plays every part of the instrument."
+          }
+        }
+      },
+      "ImportRowResult": {
+        "type": "object",
+        "required": [
+          "line",
+          "outcome"
+        ],
+        "properties": {
+          "line": {
+            "type": "integer",
+            "description": "Position in `rows`, starting at 1.",
+            "minimum": 0
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "new",
+              "existing",
+              "error"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why the row cannot be imported (English)."
+          },
+          "invitationUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "For new people after a real import."
+          }
+        }
+      },
+      "Inbox": {
+        "type": "object",
+        "required": [
+          "unread",
+          "items"
+        ],
+        "properties": {
+          "unread": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            }
+          }
+        }
+      },
+      "Instrument": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "familyId",
+          "family",
+          "aliases",
+          "sort",
+          "usage"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "familyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "family": {
+            "type": "string",
+            "description": "Name of the family."
+          },
+          "transposition": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Key the instrument is written in (`Bb`, `Eb`, `F`, …); null for concert pitch."
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Other names and abbreviations (any language), used to recognise file names and imports."
+          },
+          "sort": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Order within the family."
+          },
+          "usage": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Parts and member assignments that use the instrument."
+          }
+        }
+      },
+      "InstrumentFamily": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "sort",
+          "instrumentCount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "instrumentCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "InstrumentFamilyInput": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sort": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Omitted for new families means last."
+          }
+        }
+      },
+      "InstrumentInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "familyId"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "familyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "transposition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sort": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Order within the family; omitted for new instruments means last."
+          }
+        }
+      },
+      "Invitation": {
+        "type": "object",
+        "required": [
+          "user",
+          "url",
+          "expiresAt",
+          "emailed"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "url": {
+            "type": "string",
+            "description": "One-time sign-in link to hand over."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "emailed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Loan": {
+        "type": "object",
+        "required": [
+          "id",
+          "workId",
+          "workTitle",
+          "item",
+          "quantity",
+          "borrowerName",
+          "lentOn"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workTitle": {
+            "type": "string"
+          },
+          "item": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "borrowerId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "borrowerName": {
+            "type": "string"
+          },
+          "lentOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "dueOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "returnedOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "LoanInput": {
+        "type": "object",
+        "required": [
+          "item"
+        ],
+        "properties": {
+          "item": {
+            "type": "string",
+            "description": "What was lent, e.g. \"Trompete 2\" or \"complete set\"."
+          },
+          "quantity": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "borrowerId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "A person of the organisation; their name is taken from the account."
+          },
+          "borrowerName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Someone without an account."
+          },
+          "lentOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "Today when omitted."
+          },
+          "dueOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "returnedOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoginInput": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "Me": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email",
+          "role",
+          "hasPassword",
+          "organization"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "hasPassword": {
+            "type": "boolean",
+            "description": "False after an invitation until the user sets a password."
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Path of the user's picture, if any (and allowed)."
+          },
+          "organization": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "profilePictures"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "logoUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "profilePictures": {
+                "type": "boolean",
+                "description": "People may show a picture."
+              }
+            }
+          }
+        }
+      },
+      "MeInput": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "New password; null keeps the current one."
+          },
+          "currentPassword": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Required to change an existing password."
+          }
+        }
+      },
+      "MyEnsemble": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "leader",
+          "works",
+          "programs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "logoUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Path of the logo image, if any."
+          },
+          "symbol": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "An emoji shown when there is no logo."
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "leader": {
+            "type": "boolean"
+          },
+          "works": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyWork"
+            },
+            "description": "Works of the ensemble with at least one part the user may see."
+          },
+          "programs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Program"
+            },
+            "description": "Programmes by date, undated last; their works refer to `works`."
+          }
+        }
+      },
+      "MyPart": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "pageCount",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          },
+          "pageCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Changes whenever the part's PDF is rendered again; offline copies compare it."
+          }
+        }
+      },
+      "MyWork": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "parts"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "composer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyPart"
+            }
+          }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "params",
+          "createdAt",
+          "read"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/NotificationKind"
+          },
+          "params": {
+            "type": "object",
+            "description": "What the text is made of, by kind – partsNew: work, part (missing when a whole work was given);\nprogramChanged: program, ensemble; loanDue: work, item, date, overdue; annotationsShared: by, part, work;\nguestLinkExpiring: guest, date.",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "link": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A path of the web app."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "read": {
+            "type": "boolean"
+          }
+        }
+      },
+      "NotificationKind": {
+        "type": "string",
+        "enum": [
+          "partsNew",
+          "programChanged",
+          "loanDue",
+          "annotationsShared",
+          "guestLinkExpiring"
+        ]
+      },
+      "NotificationSetting": {
+        "allOf": [
+          {
+            "type": "object",
+            "required": [
+              "inApp",
+              "email",
+              "push"
+            ],
+            "properties": {
+              "inApp": {
+                "type": "boolean"
+              },
+              "email": {
+                "type": "boolean"
+              },
+              "push": {
+                "type": "boolean",
+                "description": "Stored already; sending push messages comes later."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "$ref": "#/components/schemas/NotificationKind"
+              }
+            }
+          }
+        ]
+      },
+      "Organization": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "profilePictures"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "logoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "profilePictures": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Part": {
+        "type": "object",
+        "required": [
+          "id",
+          "workId",
+          "sourceId",
+          "label",
+          "pages",
+          "pageCount",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          },
+          "instrumentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "voice": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "pageCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PartInfo": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MyPart"
+          },
+          {
+            "type": "object",
+            "required": [
+              "workId",
+              "workTitle"
+            ],
+            "properties": {
+              "workId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "workTitle": {
+                "type": "string"
+              },
+              "composer": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "PartInput": {
+        "type": "object",
+        "required": [
+          "label",
+          "sourceId",
+          "pages"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Display name, e.g. \"Clarinet 2\" or \"Full score\"."
+          },
+          "instrumentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Null for parts without a single instrument (full score, choir)."
+          },
+          "voice": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Part number for instruments with several parts (Clarinet 1, 2, 3)."
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A source file of the same work."
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "1-based page numbers of the source file in the order the part shows them; each page at most once."
+          }
+        },
+        "additionalProperties": false
+      },
+      "PartProposal": {
+        "type": "object",
+        "description": "A run of pages that belong to one part, read from the page headers.",
+        "required": [
+          "score",
+          "pages"
+        ],
+        "properties": {
+          "printed": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The header as printed on its first page (\"2. Trompete in B\"); none for pages before the first header."
+          },
+          "instrumentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "voice": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "score": {
+            "type": "boolean",
+            "description": "A score or similar (\"Partitur\", \"Direktion\") rather than one instrument."
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "1-based."
+          }
+        }
+      },
+      "PersonalData": {
+        "type": "object",
+        "description": "A self-describing export (account, ensembles, singleParts, annotations, loans, signIns); its fields may grow.\nIt only describes the answer; the app builds it as JSON.",
+        "required": [
+          "exportedAt",
+          "account"
+        ],
+        "properties": {
+          "exportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "account": {
+            "type": "object"
+          }
+        }
+      },
+      "PlayedPart": {
+        "type": "object",
+        "required": [
+          "instrumentId"
+        ],
+        "properties": {
+          "instrumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "voice": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Null plays every part number of the instrument."
+          }
+        }
+      },
+      "Program": {
+        "type": "object",
+        "required": [
+          "id",
+          "ensembleId",
+          "name",
+          "workIds",
+          "items"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ensembleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "startTime": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "venue": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "workIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The works in playing order (also in `items`)."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgramItem"
+            },
+            "description": "Works and breaks in playing order."
+          }
+        }
+      },
+      "ProgramInput": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "startTime": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "\"19:30\"."
+          },
+          "venue": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ProgramItem": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "workId",
+              "kind"
+            ],
+            "properties": {
+              "workId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "work"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "label",
+              "kind"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "durationSeconds": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "break"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "One entry of a programme in playing order: a work, or a break (interval, speech)."
+      },
+      "Recognition": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "subtitle": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "composer": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "arranger": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "lyricist": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "publisher": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "part": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The part as printed, e.g. \"2. Trompete in B\"."
+              },
+              "instrumentId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid"
+              },
+              "voice": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
+              },
+              "clef": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Only an AI reads the music itself."
+              },
+              "key": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "timeSignature": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "method",
+              "ai"
+            ],
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "ocr",
+                  "none"
+                ]
+              },
+              "ai": {
+                "type": "boolean",
+                "description": "The external AI added to the result."
+              }
+            }
+          }
+        ]
+      },
+      "RecognitionAbilities": {
+        "type": "object",
+        "description": "What this server can do, found out on start.",
+        "required": [
+          "text",
+          "ocr",
+          "ai"
+        ],
+        "properties": {
+          "text": {
+            "type": "boolean",
+            "description": "Text in digital PDFs."
+          },
+          "ocr": {
+            "type": "boolean",
+            "description": "Text in scans."
+          },
+          "ai": {
+            "type": "boolean",
+            "description": "An external AI reads the page as well (also clef, key and time signature)."
+          }
+        }
+      },
+      "Recording": {
+        "type": "object",
+        "required": [
+          "id",
+          "workId",
+          "kind",
+          "origin",
+          "title",
+          "fileName",
+          "contentType",
+          "size",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "full",
+              "practice"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "recorded",
+              "generated"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "partId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "instrumentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "voice": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "durationSeconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RecordingInput": {
+        "type": "object",
+        "required": [
+          "kind",
+          "origin",
+          "title"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "full",
+              "practice"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "recorded",
+              "generated"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "partId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Practice recordings only."
+          },
+          "instrumentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Practice recordings only, e.g. the voice \"Sopran\" when all voices share one score."
+          },
+          "voice": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "durationSeconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float",
+            "description": "Measured by the uploading browser."
+          }
+        },
+        "additionalProperties": false
+      },
+      "Role": {
+        "type": "string",
+        "description": "What someone may do in an organisation.",
+        "enum": [
+          "admin",
+          "librarian",
+          "leader",
+          "member"
+        ]
+      },
+      "SetupInput": {
+        "type": "object",
+        "required": [
+          "organizationName",
+          "name",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "organizationName": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "SharedAnnotations": {
+        "type": "object",
+        "required": [
+          "ensembleId",
+          "ensemble",
+          "pages",
+          "canEdit"
+        ],
+        "properties": {
+          "ensembleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ensemble": {
+            "type": "string"
+          },
+          "pages": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/Stroke"
+              }
+            },
+            "propertyNames": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updatedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "canEdit": {
+            "type": "boolean",
+            "description": "The user may change this layer (leaders of the ensemble, staff)."
+          }
+        }
+      },
+      "SourceFile": {
+        "type": "object",
+        "required": [
+          "id",
+          "workId",
+          "fileName",
+          "size",
+          "sha256",
+          "pageCount",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Bytes."
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "pageCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Stroke": {
+        "type": "object",
+        "required": [
+          "tool",
+          "color",
+          "width",
+          "points"
+        ],
+        "properties": {
+          "tool": {
+            "type": "string",
+            "enum": [
+              "pen",
+              "highlighter"
+            ]
+          },
+          "color": {
+            "type": "string"
+          },
+          "width": {
+            "type": "number",
+            "format": "float",
+            "description": "Line width as a fraction of the page width."
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "float"
+              }
+            },
+            "description": "Points as [x, y], each 0 to 1 – 0,0 is the page's top left, 1,1 its bottom right."
+          }
+        }
+      },
+      "System": {
+        "type": "object",
+        "required": [
+          "version",
+          "publicUrl",
+          "language",
+          "storage",
+          "maxUploadBytes",
+          "recognition",
+          "counts",
+          "checklist"
+        ],
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "publicUrl": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "de"
+            ]
+          },
+          "storage": {
+            "type": "string",
+            "description": "s3 or fs."
+          },
+          "maxUploadBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mailFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The sender of emails; none when the server sends none."
+          },
+          "recognition": {
+            "$ref": "#/components/schemas/RecognitionAbilities"
+          },
+          "ai": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The external AI reading pages, if any."
+          },
+          "sso": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "counts": {
+            "type": "object",
+            "required": [
+              "people",
+              "ensembles",
+              "works",
+              "parts",
+              "recordings",
+              "storedBytes"
+            ],
+            "properties": {
+              "people": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "ensembles": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "works": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "parts": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "recordings": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "storedBytes": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Uploaded sources, recordings and images; parts are cut from the sources and not counted twice."
+              }
+            }
+          },
+          "checklist": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "done",
+                "optional",
+                "manual"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "logo",
+                    "instruments",
+                    "ensembles",
+                    "people",
+                    "music",
+                    "mail",
+                    "testMail",
+                    "sso",
+                    "backups"
+                  ]
+                },
+                "done": {
+                  "type": "boolean"
+                },
+                "optional": {
+                  "type": "boolean",
+                  "description": "Not needed for every organisation."
+                },
+                "manual": {
+                  "type": "boolean",
+                  "description": "Ticked by hand rather than recognised."
+                }
+              }
+            }
+          }
+        }
+      },
+      "User": {
+        "allOf": [
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "role",
+              "hasPassword"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "role": {
+                "$ref": "#/components/schemas/Role"
+              },
+              "hasPassword": {
+                "type": "boolean"
+              },
+              "lastLoginAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "avatarUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "properties": {
+              "ensembles": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "$ref": "#/components/schemas/EnsembleRef"
+                },
+                "description": "Only for admins."
+              }
+            }
+          }
+        ]
+      },
+      "UserInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "role"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        }
+      },
+      "Work": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "tags",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "composer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "arranger": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "publisher": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lyricist": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "societyNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "archiveLocation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "instrumentation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "difficulty": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "durationSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "WorkDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Work"
+          },
+          {
+            "type": "object",
+            "required": [
+              "sources",
+              "parts"
+            ],
+            "properties": {
+              "sources": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SourceFile"
+                }
+              },
+              "parts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Part"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "WorkFacets": {
+        "type": "object",
+        "description": "Values already used on works, most used first, for suggestions while typing.",
+        "required": [
+          "composers",
+          "arrangers",
+          "publishers",
+          "instrumentations",
+          "tags"
+        ],
+        "properties": {
+          "composers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "arrangers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "publishers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "instrumentations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "WorkInput": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "composer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "arranger": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "publisher": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lyricist": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "societyNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The performing rights society's number of the work (e.g. GEMA-Werknummer)."
+          },
+          "archiveLocation": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Where the printed copies are kept, e.g. \"Schrank 3, Fach B\"."
+          },
+          "instrumentation": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Free text, e.g. \"Symphonic band\" or \"SATB\"."
+          },
+          "difficulty": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "durationSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Where the music comes from or under which licence it is used (free text, for the operator)."
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "WorkSummary": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Work"
+          },
+          {
+            "type": "object",
+            "required": [
+              "sourceCount",
+              "partCount"
+            ],
+            "properties": {
+              "sourceCount": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "partCount": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "responses": {
+      "Conflict": {
+        "description": "Clashes with existing data, e.g. a name or email that is taken.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Signed in, but the role does not allow this.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Invalid": {
+        "description": "The request is well-formed but its content is not acceptable.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "No such object in this organisation.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Too many attempts; try again later.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Not signed in, or the credentials or token are wrong or expired.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "notenwart_session"
+      }
+    }
+  },
+  "security": [
+    {
+      "session": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "auth",
+      "description": "Setup, sign-in and the signed-in user."
+    },
+    {
+      "name": "people",
+      "description": "The organisation's users (admin)."
+    },
+    {
+      "name": "ensembles",
+      "description": "Ensembles, their members with instruments, and the works they play."
+    },
+    {
+      "name": "library",
+      "description": "Works, their uploaded source PDFs and the parts split from them."
+    },
+    {
+      "name": "system",
+      "description": "For admins – what the server is and can do, a test email, and the setup checklist."
+    },
+    {
+      "name": "images",
+      "description": "The organisation's logo, ensemble logos and symbols, people's pictures."
+    },
+    {
+      "name": "recordings",
+      "description": "Full and practice recordings of works (audio only)."
+    },
+    {
+      "name": "guests",
+      "description": "Links for substitutes without an account to chosen parts of an ensemble, until a date."
+    },
+    {
+      "name": "notifications",
+      "description": "What happened for the signed-in user, and how they want to hear about it."
+    },
+    {
+      "name": "privacy",
+      "description": "What is stored about a person, and the record of deleted people."
+    },
+    {
+      "name": "loans",
+      "description": "The paper archive's loans – who has borrowed which printed parts."
+    },
+    {
+      "name": "catalogue",
+      "description": "The organisation's instrument families and instruments. A new organisation starts with a copy of the built-in catalogue, named in the server's language."
+    }
+  ]
+}

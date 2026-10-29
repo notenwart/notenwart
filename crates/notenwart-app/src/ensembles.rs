@@ -12,7 +12,7 @@ use crate::auth::{CurrentUser, Role};
 use crate::error::{AppError, AppResult, unique_violation};
 use crate::programs::{Program, programs_for};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct EnsembleInput {
     name: String,
     description: Option<String>,
@@ -26,17 +26,20 @@ impl EnsembleInput {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Ensemble {
     id: Uuid,
     name: String,
     description: Option<String>,
+    /// Path of the logo image, if any.
     logo_url: Option<String>,
+    /// An emoji shown when there is no logo.
     symbol: Option<String>,
     color: Option<String>,
     member_count: i64,
     work_count: i64,
+    /// The user may change members and works.
     can_manage: bool,
 }
 
@@ -156,14 +159,15 @@ pub async fn remove(state: &App, user: &CurrentUser, ensemble_id: Uuid) -> AppRe
 
 // ---- detail: members and works ----
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayedPart {
     instrument_id: Uuid,
+    /// Null plays every part number of the instrument.
     voice: Option<i16>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct EnsembleMember {
     user_id: Uuid,
@@ -173,7 +177,7 @@ pub struct EnsembleMember {
     plays: Vec<PlayedPart>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct EnsembleWork {
     id: Uuid,
@@ -186,12 +190,13 @@ pub struct EnsembleWork {
     duration_seconds: Option<i32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct EnsembleDetail {
     #[serde(flatten)]
     ensemble: Ensemble,
     members: Vec<EnsembleMember>,
     works: Vec<EnsembleWork>,
+    /// Programmes by date, undated last.
     programs: Vec<Program>,
 }
 
@@ -251,7 +256,8 @@ pub async fn detail(state: &App, user: &CurrentUser, ensemble_id: Uuid) -> AppRe
     Ok(EnsembleDetail { ensemble, members, works, programs })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[schema(as = EnsembleMemberInput)]
 pub struct MemberInput {
     leader: bool,
     plays: Vec<PlayedPart>,
@@ -446,17 +452,18 @@ pub async fn remove_work(state: &App, user: &CurrentUser, ensemble_id: Uuid, wor
 
 // ---- my music ----
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MyPart {
     id: Uuid,
     label: String,
     page_count: i32,
+    /// Changes whenever the part's PDF is rendered again; offline copies compare it.
     #[serde(with = "time::serde::rfc3339")]
     updated_at: time::OffsetDateTime,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct MyWork {
     id: Uuid,
     title: String,
@@ -464,16 +471,20 @@ pub struct MyWork {
     parts: Vec<MyPart>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MyEnsemble {
     id: Uuid,
     name: String,
+    /// Path of the logo image, if any.
     logo_url: Option<String>,
+    /// An emoji shown when there is no logo.
     symbol: Option<String>,
     color: Option<String>,
     leader: bool,
+    /// Works of the ensemble with at least one part the user may see.
     works: Vec<MyWork>,
+    /// Programmes by date, undated last; their works refer to `works`.
     programs: Vec<Program>,
 }
 
@@ -551,7 +562,7 @@ pub async fn may_see_part(state: &App, user: &CurrentUser, part_id: Uuid) -> App
     .await?)
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PartInfo {
     #[serde(flatten)]

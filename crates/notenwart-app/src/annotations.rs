@@ -17,31 +17,36 @@ use crate::error::{AppError, AppResult};
 const MAX_POINTS: usize = 2000;
 const MAX_STROKES: usize = 5000;
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Tool {
     Pen,
     Highlighter,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, utoipa::ToSchema)]
 pub struct Stroke {
+    #[schema(inline)]
     tool: Tool,
     color: String,
+    /// Line width as a fraction of the page width.
     width: f32,
+    /// Points as [x, y], each 0 to 1 – 0,0 is the page's top left, 1,1 its bottom right.
     points: Vec<[f32; 2]>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct AnnotationsInput {
+    /// Strokes by page number ("1", "2", …), in drawing order.
     pages: BTreeMap<u32, Vec<Stroke>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Annotations {
     pages: BTreeMap<u32, Vec<Stroke>>,
     #[serde(with = "time::serde::rfc3339::option")]
+    #[schema(required = true)]
     updated_at: Option<OffsetDateTime>,
 }
 
@@ -126,8 +131,9 @@ pub async fn save(
 
 // ---- shared by leaders ----
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(as = SharedAnnotations)]
 pub struct SharedLayer {
     ensemble_id: Uuid,
     ensemble: String,
@@ -258,7 +264,8 @@ pub async fn save_shared(
 
 // ---- printing ----
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct AnnotatedQuery {
     /// The user's own annotations (default yes).
     own: Option<bool>,

@@ -22,6 +22,21 @@ fn redirect(to: &str) -> Response {
     (StatusCode::FOUND, [(LOCATION, to.to_string())]).into_response()
 }
 
+#[utoipa::path(
+    get,
+    path = "/auth/sso/start",
+    tag = "auth",
+    operation_id = "startSso",
+    summary = "Begin signing in through the organisation's identity provider (a browser navigation)",
+    params(
+        StartQuery,
+    ),
+    responses(
+        (status = 302, description = "To the provider (OpenID Connect, authorization code with PKCE)."),
+        (status = 404, description = "No identity provider is set up."),
+    ),
+    security(),
+)]
 async fn start(State(state): State<App>, jar: CookieJar, Query(query): Query<StartQuery>) -> Response {
     match app::start(&state, query).await {
         Start::NotConfigured => StatusCode::NOT_FOUND.into_response(),
@@ -39,6 +54,23 @@ async fn start(State(state): State<App>, jar: CookieJar, Query(query): Query<Sta
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/auth/sso/callback",
+    tag = "auth",
+    operation_id = "finishSso",
+    summary = "Where the identity provider sends the browser back",
+    description = "Only people who exist in notenwart get in, found by the email address the provider vouches for. \
+    Failures redirect to `/login?sso=unknown` (not known here) or `/login?sso=failed`.",
+    params(
+        CallbackQuery,
+    ),
+    responses(
+        (status = 302, description = "Signed in (session cookie set) and on to `next`, or back to the sign-in page."),
+        (status = 404, description = "No identity provider is set up."),
+    ),
+    security(),
+)]
 async fn callback(State(state): State<App>, jar: CookieJar, Query(query): Query<CallbackQuery>) -> Response {
     if state.sso.is_none() {
         return StatusCode::NOT_FOUND.into_response();

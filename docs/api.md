@@ -6,10 +6,11 @@ permalink: /api/
 
 # API
 
-Everything the web app does goes through a JSON API under `/api` on the server. Its contract is
-[`api/openapi.yaml`](https://github.com/notenwart/notenwart/blob/main/api/openapi.yaml) (OpenAPI 3.1) – the source of
-truth for every client. Unlike the rest of notenwart it is under the **MIT licence**, so clients – for example a
-native app – can be written and generated from it under any licence.
+Everything the web app does goes through a JSON API under `/api` on the server. It is described in the server's code
+and written out as [`api/openapi.json`](https://github.com/notenwart/notenwart/blob/main/api/openapi.json)
+(OpenAPI 3.1) – the description every client is built on; a running server also answers it at `/api/openapi.json`.
+Unlike the rest of notenwart it is under the **MIT licence**, so clients – for example a native app – can be written
+and generated from it under any licence.
 
 Open the file in any OpenAPI viewer or generate a client from it (the web app uses `openapi-typescript`).
 

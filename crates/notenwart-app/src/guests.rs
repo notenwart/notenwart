@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Guest links (`guests` in api/openapi.yaml): a substitute player without an account sees chosen parts of an
+//! Guest links (`guests` in api/openapi.json): a substitute player without an account sees chosen parts of an
 //! ensemble until a date. Leaders and staff make them; the link holds a random token, stored only as a hash.
 
 use serde::{Deserialize, Serialize};
@@ -18,12 +18,13 @@ use crate::storage::part_key;
 const MAX_PARTS: usize = 200;
 const MAX_DAYS: i64 = 366;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GuestLink {
     id: Uuid,
     name: String,
     part_ids: Vec<Uuid>,
+    #[schema(format = Date)]
     expires_on: String,
     #[serde(with = "time::serde::rfc3339::option")]
     last_used_at: Option<OffsetDateTime>,
@@ -31,6 +32,7 @@ pub struct GuestLink {
     created_by: Option<String>,
     /// Only when just created: the link itself (the server keeps only its hash).
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
     url: Option<String>,
 }
 
@@ -63,11 +65,12 @@ pub async fn list(state: &App, user: &CurrentUser, ensemble_id: Uuid) -> AppResu
     links(state, ensemble_id).await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GuestLinkInput {
     name: String,
     part_ids: Vec<Uuid>,
+    #[schema(format = Date)]
     expires_on: String,
 }
 
@@ -167,7 +170,7 @@ async fn valid(state: &App, token: &str) -> AppResult<Valid> {
     })
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GuestPart {
     id: Uuid,
@@ -177,12 +180,14 @@ pub struct GuestPart {
     page_count: i32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GuestView {
     name: String,
     ensemble: String,
+    #[schema(format = Date)]
     expires_on: String,
+    #[schema(inline)]
     parts: Vec<GuestPart>,
 }
 

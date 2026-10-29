@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! The command line of notenwart: `serve` (the API with the web app) and `migrate`. It reads the configuration,
-//! connects to the database and the object store and hands an [`App`] to an interface; room for `tui` and
-//! `openapi` later.
+//! The command line of notenwart: `serve` (the API with the web app), `migrate`, and `openapi` (the API's
+//! description, without a database). It reads the configuration, connects to the database and the object store and
+//! hands an [`App`] to an interface.
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -152,6 +152,8 @@ enum Command {
     Serve(Box<ServeArgs>),
     /// Run pending database migrations and exit.
     Migrate,
+    /// Print the API's description in OpenAPI – what api/openapi.json holds.
+    Openapi,
 }
 
 #[tokio::main]
@@ -163,6 +165,10 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cli = Cli::parse();
+    if let Command::Openapi = cli.command {
+        println!("{}", notenwart_api::openapi::openapi());
+        return Ok(());
+    }
     let database_url = cli.database_url.context("DATABASE_URL is not set")?;
     let pool = notenwart_store::connect(&database_url).await.context("cannot connect to the database")?;
 
@@ -172,6 +178,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Migrate => {
             tracing::info!("database is up to date");
         }
+        Command::Openapi => unreachable!("handled before connecting"),
         Command::Serve(args) => {
             let args = *args;
             let language = Language::from(args.language);

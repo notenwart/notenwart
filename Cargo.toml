@@ -47,6 +47,7 @@ tower = { version = "=0.5.3", features = ["util"] }
 tower-http = { version = "=0.7.1", features = ["trace", "compression-gzip", "compression-br"] }
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
+utoipa = { version = "=6.0.0", features = ["uuid", "time", "preserve_order", "preserve_path_order"] }
 uuid = { version = "=1.28.0", features = ["serde", "v4"] }
 
 [workspace.lints.rust]

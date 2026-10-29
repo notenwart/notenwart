@@ -72,11 +72,36 @@ pub fn with_session(state: &App, jar: CookieJar, session: Session) -> (CookieJar
     (jar.add(cookie), Json(session.me))
 }
 
+#[utoipa::path(
+    get,
+    path = "/auth/status",
+    tag = "auth",
+    operation_id = "getAuthStatus",
+    summary = "Whether the server needs setup, and who is signed in",
+    responses(
+        (status = 200, description = "Status.", body = AuthStatus),
+    ),
+    security(),
+)]
 async fn status(State(state): State<App>, jar: CookieJar) -> ApiResult<Json<AuthStatus>> {
     let session = jar.get(SESSION_COOKIE).map(|c| c.value().to_string());
     Ok(Json(app::status(&state, session.as_deref()).await?))
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/setup",
+    tag = "auth",
+    operation_id = "setup",
+    summary = "Create the first admin (only while the server has no users) and sign in",
+    request_body = SetupInput,
+    responses(
+        (status = 201, description = "Set up and signed in.", body = Me),
+        (status = 409, response = crate::openapi::Conflict),
+        (status = 422, response = crate::openapi::Invalid),
+    ),
+    security(),
+)]
 async fn setup(
     State(state): State<App>,
     jar: CookieJar,
@@ -87,6 +112,20 @@ async fn setup(
     Ok((StatusCode::CREATED, jar, me))
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/login",
+    tag = "auth",
+    operation_id = "login",
+    summary = "Sign in with email and password",
+    request_body = LoginInput,
+    responses(
+        (status = 200, description = "Signed in.", body = Me),
+        (status = 401, response = crate::openapi::Unauthorized),
+        (status = 429, response = crate::openapi::TooManyRequests),
+    ),
+    security(),
+)]
 async fn login(
     State(state): State<App>,
     jar: CookieJar,
@@ -96,11 +135,38 @@ async fn login(
     Ok(with_session(&state, jar, session))
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/magic-link",
+    tag = "auth",
+    operation_id = "requestMagicLink",
+    summary = "Email a one-time sign-in link",
+    description = "Answers 204 whether or not the address is known, so it cannot be used to probe for accounts.",
+    request_body = inline(MagicLinkInput),
+    responses(
+        (status = 204, description = "If the address belongs to a user, a link is on its way (valid for 20 minutes)."),
+        (status = 429, response = crate::openapi::TooManyRequests),
+    ),
+    security(),
+)]
 async fn magic_link(State(state): State<App>, Json(input): Json<MagicLinkInput>) -> ApiResult<StatusCode> {
     app::magic_link(&state, input).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/token",
+    tag = "auth",
+    operation_id = "redeemToken",
+    summary = "Sign in with a one-time token from a sign-in or invitation link",
+    request_body = inline(TokenInput),
+    responses(
+        (status = 200, description = "Signed in; the token is used up.", body = Me),
+        (status = 401, response = crate::openapi::Unauthorized),
+    ),
+    security(),
+)]
 async fn redeem(
     State(state): State<App>,
     jar: CookieJar,
@@ -110,6 +176,16 @@ async fn redeem(
     Ok(with_session(&state, jar, session))
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/logout",
+    tag = "auth",
+    operation_id = "logout",
+    summary = "Sign out",
+    responses(
+        (status = 204, description = "Signed out."),
+    ),
+)]
 async fn logout(State(state): State<App>, jar: CookieJar) -> ApiResult<(CookieJar, StatusCode)> {
     if let Some(cookie) = jar.get(SESSION_COOKIE) {
         app::logout(&state, cookie.value()).await?;
@@ -117,10 +193,34 @@ async fn logout(State(state): State<App>, jar: CookieJar) -> ApiResult<(CookieJa
     Ok((jar.remove(Cookie::build(SESSION_COOKIE).path("/")), StatusCode::NO_CONTENT))
 }
 
+#[utoipa::path(
+    get,
+    path = "/me",
+    tag = "auth",
+    operation_id = "getMe",
+    summary = "The signed-in user",
+    responses(
+        (status = 200, description = "The user.", body = Me),
+        (status = 401, response = crate::openapi::Unauthorized),
+    ),
+)]
 async fn me(user: SignedIn) -> Json<Me> {
     Json(app::me(&user))
 }
 
+#[utoipa::path(
+    put,
+    path = "/me",
+    tag = "auth",
+    operation_id = "updateMe",
+    summary = "Change own name or password",
+    request_body = MeInput,
+    responses(
+        (status = 200, description = "Updated.", body = Me),
+        (status = 401, response = crate::openapi::Unauthorized),
+        (status = 422, response = crate::openapi::Invalid),
+    ),
+)]
 async fn update_me(State(state): State<App>, user: SignedIn, Json(input): Json<MeInput>) -> ApiResult<Json<Me>> {
     Ok(Json(app::update_me(&state, &user, input).await?))
 }

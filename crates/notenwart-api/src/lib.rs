@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! The open API of notenwart: HTTP and JSON under `/api`, described in `api/openapi.yaml` (the contract, MIT), and
+//! The open API of notenwart: HTTP and JSON under `/api`, described in `api/openapi.json` (the contract, MIT), and
 //! the web app around it, embedded into the binary. Like every interface, it works through `notenwart-app` only: a
 //! handler takes the request apart (path, query, JSON, multipart, cookies), finds the caller ([`auth::SignedIn`])
 //! and calls a command, then turns the answer into a status, headers and JSON. No queries and no rules here.
@@ -17,6 +17,7 @@ mod import;
 mod library;
 mod loans;
 mod notify;
+pub mod openapi;
 mod people;
 mod privacy;
 mod programs;
@@ -36,8 +37,9 @@ use serde::Serialize;
 use tower_http::compression::CompressionLayer;
 use tower_http::compression::predicate::{NotForContentType, Predicate, SizeAbove};
 use tower_http::trace::TraceLayer;
+use utoipa::OpenApi;
 
-/// `/api/*` is the JSON API (see `api/openapi.yaml`); everything else is the web app.
+/// `/api/*` is the JSON API (see `api/openapi.json`); everything else is the web app.
 pub fn router(state: App) -> Router {
     Router::new()
         .nest("/api", api(state.config.max_upload))
@@ -68,6 +70,7 @@ pub async fn serve(
 fn api(max_upload: usize) -> Router<App> {
     Router::new()
         .route("/health", get(health))
+        .route("/openapi.json", get(|| async { Json(openapi::ApiDoc::openapi()) }))
         .merge(auth::router())
         .merge(people::router())
         .merge(catalogue::router())
@@ -87,13 +90,40 @@ fn api(max_upload: usize) -> Router<App> {
         .fallback(|| async { StatusCode::NOT_FOUND })
 }
 
-#[derive(Serialize)]
-struct Health {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct Health {
+    #[schema(schema_with = notenwart_app::schema::strings::<HealthStatus>)]
     status: &'static str,
+    /// Server version (semver).
     version: &'static str,
+    #[schema(schema_with = notenwart_app::schema::strings::<DatabaseStatus>)]
     database: &'static str,
 }
 
+/// The values of `Health::status`.
+struct HealthStatus;
+impl notenwart_app::schema::Strings for HealthStatus {
+    const VALUES: &[&str] = &["ok", "degraded"];
+}
+
+/// The values of `Health::database`.
+struct DatabaseStatus;
+impl notenwart_app::schema::Strings for DatabaseStatus {
+    const VALUES: &[&str] = &["ok", "unavailable"];
+}
+
+#[utoipa::path(
+    get,
+    path = "/health",
+    tag = "system",
+    operation_id = "getHealth",
+    summary = "Server and database status",
+    responses(
+        (status = 200, description = "The server and its database are up.", body = crate::Health),
+        (status = 503, description = "The server runs, but the database is unavailable.", body = crate::Health),
+    ),
+    security(),
+)]
 async fn health(State(state): State<App>) -> (StatusCode, Json<Health>) {
     let database_ok = notenwart_app::database_ok(&state).await;
     let code = if database_ok { StatusCode::OK } else { StatusCode::SERVICE_UNAVAILABLE };

@@ -148,9 +148,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -167,9 +165,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				programId: components['parameters']['ProgramId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -187,9 +183,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				programId: components['parameters']['ProgramId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -209,9 +203,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** The parts of the ensemble's works, for granting (admin, librarian, leaders of the ensemble) */
@@ -228,9 +220,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** Parts granted to single members of the ensemble (admin, librarian, leaders of the ensemble) */
@@ -247,11 +237,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-				partId: components['parameters']['PartId'];
-				userId: components['parameters']['UserId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -348,9 +334,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				userId: components['parameters']['UserId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -368,9 +352,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				userId: components['parameters']['UserId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -405,9 +387,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/**
@@ -429,10 +409,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-				userId: components['parameters']['UserId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -453,10 +430,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-				workId: components['parameters']['WorkId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -492,9 +466,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				instrumentId: components['parameters']['InstrumentId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -512,9 +484,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				instrumentId: components['parameters']['InstrumentId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -552,9 +522,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				familyId: components['parameters']['FamilyId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -626,9 +594,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				loanId: string;
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -646,9 +612,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				workId: components['parameters']['WorkId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** Loans of one work, returned ones included (admin, librarian) */
@@ -771,9 +735,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				key: 'instruments' | 'backups' | 'testMail';
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -790,9 +752,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				imageId: string;
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** An avatar image (the organisation's logo for anyone; others for signed-in people allowed to see them) */
@@ -845,9 +805,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -865,9 +823,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -902,9 +858,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				workId: components['parameters']['WorkId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** Recordings of a work (whoever sees a part of it) */
@@ -922,9 +876,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				recordingId: string;
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -942,9 +894,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				recordingId: string;
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** The audio (whoever sees a part of the work); supports Range requests */
@@ -961,9 +911,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** Guest links of an ensemble (admin, librarian, leaders of the ensemble) */
@@ -981,9 +929,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				linkId: string;
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -1000,9 +946,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				token: string;
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** What a guest link shows (no account) */
@@ -1019,10 +963,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				token: string;
-				partId: components['parameters']['PartId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** A part's PDF through a guest link (no account) */
@@ -1108,9 +1049,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				userId: components['parameters']['UserId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** Everything stored about a person (admin) */
@@ -1179,9 +1118,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				workId: components['parameters']['WorkId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** A work with its source files and parts (admin, librarian, leader) */
@@ -1200,9 +1137,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				workId: components['parameters']['WorkId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -1219,9 +1154,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				sourceId: components['parameters']['SourceId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -1238,9 +1171,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				sourceId: components['parameters']['SourceId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -1257,9 +1188,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				sourceId: components['parameters']['SourceId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -1279,9 +1208,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				sourceId: components['parameters']['SourceId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** The uploaded PDF (admin, librarian, leader) */
@@ -1298,9 +1225,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				workId: components['parameters']['WorkId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -1320,9 +1245,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				partId: components['parameters']['PartId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -1340,9 +1263,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				partId: components['parameters']['PartId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** What the viewer shows about a part (anyone who may see the part) */
@@ -1359,9 +1280,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				partId: components['parameters']['PartId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/**
@@ -1381,10 +1300,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				partId: components['parameters']['PartId'];
-				ensembleId: components['parameters']['EnsembleId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		get?: never;
@@ -1404,9 +1320,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				partId: components['parameters']['PartId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** The part's PDF with annotations drawn in, for printing or keeping (whoever sees the part) */
@@ -1423,9 +1337,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				partId: components['parameters']['PartId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** The signed-in user's annotations on a part (anyone who may see the part) */
@@ -1446,9 +1358,7 @@ export interface paths {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				partId: components['parameters']['PartId'];
-			};
+			path?: never;
 			cookie?: never;
 		};
 		/** The part's PDF (anyone who may see the part) */
@@ -1465,47 +1375,18 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
 	schemas: {
-		Health: {
-			/** @enum {string} */
-			status: 'ok' | 'degraded';
-			/** @description Server version (semver). */
-			version: string;
-			/** @enum {string} */
-			database: 'ok' | 'unavailable';
-		};
-		Error: {
-			/** @description Machine-readable code, e.g. `unauthorized`, `forbidden`, `not_found`, `invalid`, `conflict`. */
-			error: string;
-			/** @description Human-readable explanation (English). */
-			message: string;
-		};
-		/** @enum {string} */
-		Role: 'admin' | 'librarian' | 'leader' | 'member';
-		Me: {
-			/** Format: uuid */
-			id: string;
-			name: string;
-			email: string;
-			role: components['schemas']['Role'];
-			/** @description False after an invitation until the user sets a password. */
-			hasPassword: boolean;
-			/** @description Path of the user's picture, if any (and allowed). */
-			avatarUrl?: string | null;
-			organization: {
-				logoUrl?: string | null;
-				/** @description People may show a picture. */
-				profilePictures: boolean;
-				/** Format: uuid */
-				id: string;
-				name: string;
+		Annotations: {
+			pages: {
+				[key: string]: components['schemas']['Stroke'][];
 			};
+			/** Format: date-time */
+			updatedAt: string | null;
 		};
-		MeInput: {
-			name: string;
-			/** @description New password; null keeps the current one. */
-			password?: string | null;
-			/** @description Required to change an existing password. */
-			currentPassword?: string | null;
+		AnnotationsInput: {
+			/** @description Strokes by page number ("1", "2", …), in drawing order. */
+			pages: {
+				[key: string]: components['schemas']['Stroke'][];
+			};
 		};
 		AuthStatus: {
 			/** @description The server has no users yet; `/auth/setup` creates the first admin. */
@@ -1515,7 +1396,7 @@ export interface components {
 			/** @description Largest PDF the server accepts in one upload. */
 			maxUploadBytes: number;
 			recognition: components['schemas']['RecognitionAbilities'];
-			/** @description Name of the identity provider to sign in with (`/auth/sso/start`), if one is set up. */
+			/** @description Name of the identity provider to sign in with, if one is set up. */
 			sso?: string | null;
 			/** @description The organisation's name and logo, for the sign-in page. */
 			organization?: {
@@ -1524,69 +1405,7 @@ export interface components {
 			} | null;
 			user?: components['schemas']['Me'] | null;
 		};
-		SetupInput: {
-			organizationName: string;
-			name: string;
-			email: string;
-			password: string;
-		};
-		LoginInput: {
-			email: string;
-			password: string;
-		};
-		User: {
-			/** Format: uuid */
-			id: string;
-			name: string;
-			/** @description Only for admins. */
-			email?: string | null;
-			role: components['schemas']['Role'];
-			hasPassword: boolean;
-			/** Format: date-time */
-			lastLoginAt?: string | null;
-			avatarUrl?: string | null;
-			/** @description The ensembles the person is in (only for admins). */
-			ensembles?: components['schemas']['EnsembleRef'][] | null;
-		};
-		UserInput: {
-			name: string;
-			email: string;
-			role: components['schemas']['Role'];
-		};
-		ImportRow: {
-			name: string;
-			email: string;
-			/** @description admin, librarian, leader or member (also German – Admin, Notenverwaltung, Leitung, Mitglied); empty means member. Ignored for existing people. */
-			role?: string | null;
-			/** @description Ensemble name; created when missing. */
-			ensemble?: string | null;
-			/** @description Instrument name or alias (English or German, e.g. "Trompete"); needs an ensemble. */
-			instrument?: string | null;
-			/** @description Part number; empty plays every part of the instrument. */
-			voice?: number | null;
-		};
-		ImportInput: {
-			rows: components['schemas']['ImportRow'][];
-			dryRun: boolean;
-		};
-		ImportRowResult: {
-			/** @description Position in `rows`, starting at 1. */
-			line: number;
-			/** @enum {string} */
-			outcome: 'new' | 'existing' | 'error';
-			/** @description Why the row cannot be imported (English). */
-			message?: string | null;
-			/** @description For new people after a real import. */
-			invitationUrl?: string | null;
-		};
-		ImportResult: {
-			applied: boolean;
-			rows: components['schemas']['ImportRowResult'][];
-			newPeople: number;
-			ensemblesCreated: string[];
-			errors: number;
-		};
-		EnsembleRef: {
+		Borrower: {
 			/** Format: uuid */
 			id: string;
 			name: string;
@@ -1595,7 +1414,7 @@ export interface components {
 			userIds: string[];
 			/** @enum {string} */
 			action: 'setRole' | 'addToEnsemble' | 'removeFromEnsemble' | 'invite' | 'delete';
-			role?: components['schemas']['Role'];
+			role?: components['schemas']['Role'] | null;
 			/**
 			 * Format: uuid
 			 * @description For addToEnsemble and removeFromEnsemble.
@@ -1606,6 +1425,7 @@ export interface components {
 			 * @description For addToEnsemble – also play this instrument there.
 			 */
 			instrumentId?: string | null;
+			/** Format: int32 */
 			voice?: number | null;
 		};
 		BulkResult: {
@@ -1625,497 +1445,6 @@ export interface components {
 				url: string;
 			}[];
 		};
-		Invitation: {
-			user: components['schemas']['User'];
-			/** @description One-time sign-in link to hand over. */
-			url: string;
-			/** Format: date-time */
-			expiresAt: string;
-			emailed: boolean;
-		};
-		EnsembleInput: {
-			name: string;
-			description?: string | null;
-		};
-		Ensemble: components['schemas']['EnsembleInput'] & {
-			/** Format: uuid */
-			id: string;
-			memberCount: number;
-			workCount: number;
-			/** @description The user may change members and works. */
-			canManage: boolean;
-			/** @description Path of the logo image, if any. */
-			logoUrl?: string | null;
-			/** @description An emoji shown when there is no logo. */
-			symbol?: string | null;
-			color?: string | null;
-		};
-		PlayedPart: {
-			/** Format: uuid */
-			instrumentId: string;
-			/** @description Null plays every part number of the instrument. */
-			voice?: number | null;
-		};
-		EnsembleMemberInput: {
-			leader: boolean;
-			plays: components['schemas']['PlayedPart'][];
-		};
-		EnsembleMember: components['schemas']['EnsembleMemberInput'] & {
-			/** Format: uuid */
-			userId: string;
-			name: string;
-			avatarUrl?: string | null;
-		};
-		ProgramInput: {
-			name: string;
-			/** Format: date */
-			date?: string | null;
-			/** @description When the concert starts, HH:MM. */
-			startTime?: string | null;
-			venue?: string | null;
-			notes?: string | null;
-		};
-		/** @description A work, or a break such as an interval or a speech. */
-		ProgramItem:
-			| {
-					/** @constant */
-					kind: 'work';
-					/** Format: uuid */
-					workId: string;
-					note?: string | null;
-			  }
-			| {
-					/** @constant */
-					kind: 'break';
-					label: string;
-					durationSeconds?: number | null;
-					note?: string | null;
-			  };
-		Program: components['schemas']['ProgramInput'] & {
-			/** Format: uuid */
-			id: string;
-			/** Format: uuid */
-			ensembleId: string;
-			/** @description The works in playing order (the works of `items`). */
-			workIds: string[];
-			/** @description Works and breaks in playing order. */
-			items: components['schemas']['ProgramItem'][];
-		};
-		EnsemblePart: {
-			/** Format: uuid */
-			id: string;
-			label: string;
-			/** Format: uuid */
-			instrumentId?: string | null;
-			voice?: number | null;
-			/** Format: uuid */
-			workId: string;
-			workTitle: string;
-		};
-		Grant: {
-			/** Format: uuid */
-			partId: string;
-			/** Format: uuid */
-			userId: string;
-			label: string;
-			workTitle: string;
-			userName: string;
-		};
-		EnsembleWork: {
-			/** Format: uuid */
-			id: string;
-			title: string;
-			composer?: string | null;
-			arranger?: string | null;
-			publisher?: string | null;
-			lyricist?: string | null;
-			societyNumber?: string | null;
-			durationSeconds?: number | null;
-		};
-		EnsembleDetail: components['schemas']['Ensemble'] & {
-			/** @description Programmes by date, undated last. */
-			programs: components['schemas']['Program'][];
-			members: components['schemas']['EnsembleMember'][];
-			works: components['schemas']['EnsembleWork'][];
-		};
-		Stroke: {
-			/** @enum {string} */
-			tool: 'pen' | 'highlighter';
-			color: string;
-			/** @description Line width as a fraction of the page width. */
-			width: number;
-			/** @description Points as [x, y], each 0 to 1 – 0,0 is the page's top left, 1,1 its bottom right. */
-			points: number[][];
-		};
-		AnnotationsInput: {
-			/** @description Strokes by page number ("1", "2", …), in drawing order. */
-			pages: {
-				[key: string]: components['schemas']['Stroke'][];
-			};
-		};
-		Annotations: components['schemas']['AnnotationsInput'] & {
-			/** Format: date-time */
-			updatedAt: string | null;
-		};
-		SharedAnnotations: components['schemas']['AnnotationsInput'] & {
-			/** Format: uuid */
-			ensembleId: string;
-			ensemble: string;
-			/** Format: date-time */
-			updatedAt?: string | null;
-			updatedBy?: string | null;
-			/** @description The user may change this layer. */
-			canEdit: boolean;
-		};
-		MyPart: {
-			/** Format: uuid */
-			id: string;
-			label: string;
-			pageCount: number;
-			/**
-			 * Format: date-time
-			 * @description Changes whenever the part's PDF is rendered again; offline copies compare it.
-			 */
-			updatedAt: string;
-		};
-		PartInfo: components['schemas']['MyPart'] & {
-			/** Format: uuid */
-			workId: string;
-			workTitle: string;
-			composer?: string | null;
-		};
-		MyWork: {
-			/** Format: uuid */
-			id: string;
-			title: string;
-			composer?: string | null;
-			parts: components['schemas']['MyPart'][];
-		};
-		MyEnsemble: {
-			/** Format: uuid */
-			id: string;
-			name: string;
-			leader: boolean;
-			/** @description Path of the logo image, if any. */
-			logoUrl?: string | null;
-			/** @description An emoji shown when there is no logo. */
-			symbol?: string | null;
-			color?: string | null;
-			/** @description Works of the ensemble with at least one part the user may see. */
-			works: components['schemas']['MyWork'][];
-			/** @description Programmes by date, undated last; their works refer to `works`. */
-			programs: components['schemas']['Program'][];
-		};
-		Instrument: {
-			/** Format: uuid */
-			id: string;
-			/** @example Klarinette */
-			name: string;
-			/** Format: uuid */
-			familyId: string;
-			/**
-			 * @description Name of the family.
-			 * @example Holzbläser
-			 */
-			family: string;
-			/** @description Key the instrument is written in (`Bb`, `Eb`, `F`, …); null for concert pitch. */
-			transposition?: string | null;
-			/** @description Other names and abbreviations (any language), used to recognise file names and imports. */
-			aliases: string[];
-			/** @description Order within the family. */
-			sort: number;
-			/** @description Parts and member assignments that use the instrument; only unused ones can be removed. */
-			usage: number;
-		};
-		InstrumentInput: {
-			name: string;
-			/** Format: uuid */
-			familyId: string;
-			transposition?: string | null;
-			aliases?: string[];
-			/** @description Order within the family; omitted for new instruments means last. */
-			sort?: number | null;
-		};
-		InstrumentFamily: {
-			/** Format: uuid */
-			id: string;
-			/** @example Blechbläser */
-			name: string;
-			sort: number;
-			instrumentCount: number;
-		};
-		InstrumentFamilyInput: {
-			name: string;
-			/** @description Omitted for new families means last. */
-			sort?: number | null;
-		};
-		WorkInput: {
-			title: string;
-			composer?: string | null;
-			arranger?: string | null;
-			publisher?: string | null;
-			lyricist?: string | null;
-			/** @description The performing rights society's number of the work (e.g. GEMA-Werknummer). */
-			societyNumber?: string | null;
-			/** @description Where the printed copies are kept, e.g. "Schrank 3, Fach B". */
-			archiveLocation?: string | null;
-			/** @description Free text, e.g. "Symphonic band" or "SATB". */
-			instrumentation?: string | null;
-			difficulty?: number | null;
-			durationSeconds?: number | null;
-			/** @description Where the music comes from or under which licence it is used (free text, for the operator). */
-			source?: string | null;
-			notes?: string | null;
-			/** @default [] */
-			tags: string[];
-		};
-		Work: components['schemas']['WorkInput'] & {
-			/** Format: uuid */
-			id: string;
-			/** Format: date-time */
-			createdAt: string;
-			/** Format: date-time */
-			updatedAt: string;
-		};
-		/** @description How this server reads sheet music. */
-		RecognitionAbilities: {
-			/** @description Text in digital PDFs. */
-			text: boolean;
-			/** @description Text in scans. */
-			ocr: boolean;
-			/** @description An external AI reads the page as well (also clef, key and time signature). */
-			ai: boolean;
-		};
-		Recognition: {
-			/**
-			 * @description Where the text came from.
-			 * @enum {string}
-			 */
-			method: 'text' | 'ocr' | 'none';
-			/** @description The external AI contributed. */
-			ai: boolean;
-			title?: string | null;
-			subtitle?: string | null;
-			composer?: string | null;
-			arranger?: string | null;
-			lyricist?: string | null;
-			publisher?: string | null;
-			/** @description The part as printed, e.g. "2. Trompete in B". */
-			part?: string | null;
-			/** Format: uuid */
-			instrumentId?: string | null;
-			voice?: number | null;
-			/** @description At the beginning of the first staff (AI only). */
-			clef?: string | null;
-			/** @description Key signature as written for the part (AI only). */
-			key?: string | null;
-			timeSignature?: string | null;
-		};
-		PartProposal: {
-			/** @description The header as printed on the part's first page; null for pages before the first header. */
-			printed?: string | null;
-			/** Format: uuid */
-			instrumentId?: string | null;
-			voice?: number | null;
-			/** @description A score or conductor's part rather than one instrument. */
-			score: boolean;
-			pages: number[];
-		};
-		LoanInput: {
-			/** @description What was lent, e.g. "Trompete 2" or "complete set". */
-			item: string;
-			quantity?: number | null;
-			/**
-			 * Format: uuid
-			 * @description A person of the organisation; their name is taken from the account.
-			 */
-			borrowerId?: string | null;
-			/** @description Someone without an account (used when borrowerId is null). */
-			borrowerName?: string | null;
-			/**
-			 * Format: date
-			 * @description Today when omitted.
-			 */
-			lentOn?: string | null;
-			/** Format: date */
-			dueOn?: string | null;
-			/** Format: date */
-			returnedOn?: string | null;
-			note?: string | null;
-		};
-		Loan: {
-			/** Format: uuid */
-			id: string;
-			/** Format: uuid */
-			workId: string;
-			workTitle: string;
-			item: string;
-			quantity: number;
-			/** Format: uuid */
-			borrowerId?: string | null;
-			borrowerName: string;
-			/** Format: date */
-			lentOn: string;
-			/** Format: date */
-			dueOn?: string | null;
-			/** Format: date */
-			returnedOn?: string | null;
-			note?: string | null;
-		};
-		Borrower: {
-			/** Format: uuid */
-			id: string;
-			name: string;
-		};
-		System: {
-			version: string;
-			publicUrl: string;
-			/** @enum {string} */
-			language: 'en' | 'de';
-			/** @description s3 or fs. */
-			storage: string;
-			maxUploadBytes: number;
-			/** @description The sender; null when the server sends no email. */
-			mailFrom?: string | null;
-			recognition: components['schemas']['RecognitionAbilities'];
-			/** @description The external AI reading pages, if any. */
-			ai?: string | null;
-			sso?: string | null;
-			counts: {
-				people: number;
-				ensembles: number;
-				works: number;
-				parts: number;
-				recordings: number;
-				/** @description Sources, recordings and images. */
-				storedBytes: number;
-			};
-			checklist: {
-				/** @enum {string} */
-				key:
-					| 'logo'
-					| 'instruments'
-					| 'ensembles'
-					| 'people'
-					| 'music'
-					| 'mail'
-					| 'testMail'
-					| 'sso'
-					| 'backups';
-				done: boolean;
-				optional: boolean;
-				/** @description Ticked by hand rather than recognised. */
-				manual: boolean;
-			}[];
-		};
-		Organization: {
-			/** Format: uuid */
-			id: string;
-			name: string;
-			logoUrl?: string | null;
-			profilePictures: boolean;
-		};
-		RecordingInput: {
-			/**
-			 * @description A recording of the whole work, or a practice recording of one part or voice.
-			 * @enum {string}
-			 */
-			kind: 'full' | 'practice';
-			/**
-			 * @description Played and recorded, or generated (e.g. from MIDI or notation software).
-			 * @enum {string}
-			 */
-			origin: 'recorded' | 'generated';
-			title: string;
-			/**
-			 * Format: uuid
-			 * @description Practice recordings only.
-			 */
-			partId?: string | null;
-			/**
-			 * Format: uuid
-			 * @description Practice recordings only, e.g. the voice "Sopran" when all voices share one score.
-			 */
-			instrumentId?: string | null;
-			voice?: number | null;
-			/** @description Measured by the uploading browser. */
-			durationSeconds?: number | null;
-		};
-		Recording: components['schemas']['RecordingInput'] & {
-			/** Format: uuid */
-			id: string;
-			/** Format: uuid */
-			workId: string;
-			fileName: string;
-			contentType: string;
-			size: number;
-			/** Format: date-time */
-			createdAt: string;
-		};
-		GuestLink: {
-			/** Format: uuid */
-			id: string;
-			name: string;
-			partIds: string[];
-			/** Format: date */
-			expiresOn: string;
-			/** Format: date-time */
-			lastUsedAt?: string | null;
-			revoked: boolean;
-			createdBy?: string | null;
-			/** @description Only in the answer to creating it. */
-			url?: string;
-		};
-		GuestView: {
-			name: string;
-			ensemble: string;
-			/** Format: date */
-			expiresOn: string;
-			parts: {
-				/** Format: uuid */
-				id: string;
-				label: string;
-				workTitle: string;
-				composer?: string | null;
-				pageCount: number;
-			}[];
-		};
-		/** @enum {string} */
-		NotificationKind:
-			'partsNew' | 'programChanged' | 'loanDue' | 'annotationsShared' | 'guestLinkExpiring';
-		Notification: {
-			/** Format: uuid */
-			id: string;
-			kind: components['schemas']['NotificationKind'];
-			/** @description What the text is made of, by kind – partsNew: work, part (missing when a whole work was given); programChanged: program, ensemble; loanDue: work, item, date, overdue; annotationsShared: by, part, work; guestLinkExpiring: guest, date. */
-			params: {
-				[key: string]: unknown;
-			};
-			/** @description A path of the web app. */
-			link?: string | null;
-			/** Format: date-time */
-			createdAt: string;
-			read: boolean;
-		};
-		Inbox: {
-			unread: number;
-			items: components['schemas']['Notification'][];
-		};
-		NotificationSetting: {
-			kind: components['schemas']['NotificationKind'];
-			inApp: boolean;
-			email: boolean;
-			/** @description Kept already; push messages are not sent yet. */
-			push: boolean;
-		};
-		/** @description A self-describing export (account, ensembles, singleParts, annotations, loans, signIns); its fields may grow. */
-		PersonalData: {
-			/** Format: date-time */
-			exportedAt: string;
-			account: Record<string, never>;
-		} & {
-			[key: string]: unknown;
-		};
 		Deletion: {
 			/**
 			 * Format: uuid
@@ -2131,33 +1460,400 @@ export interface components {
 				[key: string]: number;
 			};
 		};
-		WorkFacets: {
-			composers: string[];
-			arrangers: string[];
-			publishers: string[];
-			instrumentations: string[];
-			tags: string[];
+		Ensemble: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+			description?: string | null;
+			/** @description Path of the logo image, if any. */
+			logoUrl?: string | null;
+			/** @description An emoji shown when there is no logo. */
+			symbol?: string | null;
+			color?: string | null;
+			/** Format: int64 */
+			memberCount: number;
+			/** Format: int64 */
+			workCount: number;
+			/** @description The user may change members and works. */
+			canManage: boolean;
 		};
-		WorkSummary: components['schemas']['Work'] & {
-			sourceCount: number;
-			partCount: number;
+		EnsembleDetail: components['schemas']['Ensemble'] & {
+			members: components['schemas']['EnsembleMember'][];
+			works: components['schemas']['EnsembleWork'][];
+			/** @description Programmes by date, undated last. */
+			programs: components['schemas']['Program'][];
 		};
-		WorkDetail: components['schemas']['Work'] & {
-			sources: components['schemas']['SourceFile'][];
-			parts: components['schemas']['Part'][];
+		EnsembleInput: {
+			name: string;
+			description?: string | null;
 		};
-		SourceFile: {
+		EnsembleMember: {
+			/** Format: uuid */
+			userId: string;
+			name: string;
+			avatarUrl?: string | null;
+			leader: boolean;
+			plays: components['schemas']['PlayedPart'][];
+		};
+		EnsembleMemberInput: {
+			leader: boolean;
+			plays: components['schemas']['PlayedPart'][];
+		};
+		EnsemblePart: {
+			/** Format: uuid */
+			id: string;
+			label: string;
+			/** Format: uuid */
+			instrumentId?: string | null;
+			/** Format: int32 */
+			voice?: number | null;
+			/** Format: uuid */
+			workId: string;
+			workTitle: string;
+		};
+		EnsembleRef: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+		};
+		EnsembleWork: {
+			/** Format: uuid */
+			id: string;
+			title: string;
+			composer?: string | null;
+			arranger?: string | null;
+			publisher?: string | null;
+			lyricist?: string | null;
+			societyNumber?: string | null;
+			/** Format: int32 */
+			durationSeconds?: number | null;
+		};
+		/** @description What went wrong (the `Error` schema). */
+		Error: {
+			/** @description Machine-readable code, e.g. `unauthorized`, `forbidden`, `not_found`, `invalid`, `conflict`. */
+			error: string;
+			/** @description Human-readable explanation (English). */
+			message: string;
+		};
+		Grant: {
+			/** Format: uuid */
+			partId: string;
+			/** Format: uuid */
+			userId: string;
+			label: string;
+			workTitle: string;
+			userName: string;
+		};
+		GuestLink: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+			partIds: string[];
+			/** Format: date */
+			expiresOn: string;
+			/** Format: date-time */
+			lastUsedAt?: string | null;
+			revoked: boolean;
+			createdBy?: string | null;
+			/** @description Only when just created: the link itself (the server keeps only its hash). */
+			url?: string;
+		};
+		GuestView: {
+			name: string;
+			ensemble: string;
+			/** Format: date */
+			expiresOn: string;
+			parts: {
+				/** Format: uuid */
+				id: string;
+				label: string;
+				workTitle: string;
+				composer?: string | null;
+				/** Format: int32 */
+				pageCount: number;
+			}[];
+		};
+		Health: {
+			/** @enum {string} */
+			status: 'ok' | 'degraded';
+			/** @description Server version (semver). */
+			version: string;
+			/** @enum {string} */
+			database: 'ok' | 'unavailable';
+		};
+		ImportInput: {
+			rows: components['schemas']['ImportRow'][];
+			dryRun: boolean;
+		};
+		ImportResult: {
+			applied: boolean;
+			rows: components['schemas']['ImportRowResult'][];
+			newPeople: number;
+			ensemblesCreated: string[];
+			/** @description Rows with errors. */
+			errors: number;
+		};
+		ImportRow: {
+			name: string;
+			email: string;
+			/**
+			 * @description admin, librarian, leader or member (also German – Admin, Notenverwaltung, Leitung, Mitglied); empty means
+			 *     member. Ignored for existing people.
+			 */
+			role?: string | null;
+			/** @description Ensemble name; created when missing. */
+			ensemble?: string | null;
+			/** @description Instrument name or alias (English or German, e.g. "Trompete"); needs an ensemble. */
+			instrument?: string | null;
+			/**
+			 * Format: int32
+			 * @description Part number; empty plays every part of the instrument.
+			 */
+			voice?: number | null;
+		};
+		ImportRowResult: {
+			/** @description Position in `rows`, starting at 1. */
+			line: number;
+			/** @enum {string} */
+			outcome: 'new' | 'existing' | 'error';
+			/** @description Why the row cannot be imported (English). */
+			message?: string | null;
+			/** @description For new people after a real import. */
+			invitationUrl?: string | null;
+		};
+		Inbox: {
+			/** Format: int64 */
+			unread: number;
+			items: components['schemas']['Notification'][];
+		};
+		Instrument: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+			/** Format: uuid */
+			familyId: string;
+			/** @description Name of the family. */
+			family: string;
+			/** @description Key the instrument is written in (`Bb`, `Eb`, `F`, …); null for concert pitch. */
+			transposition?: string | null;
+			/** @description Other names and abbreviations (any language), used to recognise file names and imports. */
+			aliases: string[];
+			/**
+			 * Format: int32
+			 * @description Order within the family.
+			 */
+			sort: number;
+			/**
+			 * Format: int64
+			 * @description Parts and member assignments that use the instrument.
+			 */
+			usage: number;
+		};
+		InstrumentFamily: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+			/** Format: int32 */
+			sort: number;
+			/** Format: int64 */
+			instrumentCount: number;
+		};
+		InstrumentFamilyInput: {
+			name: string;
+			/**
+			 * Format: int32
+			 * @description Omitted for new families means last.
+			 */
+			sort?: number | null;
+		};
+		InstrumentInput: {
+			name: string;
+			/** Format: uuid */
+			familyId: string;
+			transposition?: string | null;
+			aliases?: string[];
+			/**
+			 * Format: int32
+			 * @description Order within the family; omitted for new instruments means last.
+			 */
+			sort?: number | null;
+		};
+		Invitation: {
+			user: components['schemas']['User'];
+			/** @description One-time sign-in link to hand over. */
+			url: string;
+			/** Format: date-time */
+			expiresAt: string;
+			emailed: boolean;
+		};
+		Loan: {
 			/** Format: uuid */
 			id: string;
 			/** Format: uuid */
 			workId: string;
-			fileName: string;
-			/** @description Bytes. */
-			size: number;
-			sha256: string;
+			workTitle: string;
+			item: string;
+			/** Format: int32 */
+			quantity: number;
+			/** Format: uuid */
+			borrowerId?: string | null;
+			borrowerName: string;
+			/** Format: date */
+			lentOn: string;
+			/** Format: date */
+			dueOn?: string | null;
+			/** Format: date */
+			returnedOn?: string | null;
+			note?: string | null;
+		};
+		LoanInput: {
+			/** @description What was lent, e.g. "Trompete 2" or "complete set". */
+			item: string;
+			/** Format: int32 */
+			quantity?: number | null;
+			/**
+			 * Format: uuid
+			 * @description A person of the organisation; their name is taken from the account.
+			 */
+			borrowerId?: string | null;
+			/** @description Someone without an account. */
+			borrowerName?: string | null;
+			/**
+			 * Format: date
+			 * @description Today when omitted.
+			 */
+			lentOn?: string | null;
+			/** Format: date */
+			dueOn?: string | null;
+			/** Format: date */
+			returnedOn?: string | null;
+			note?: string | null;
+		};
+		LoginInput: {
+			email: string;
+			password: string;
+		};
+		Me: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+			email: string;
+			role: components['schemas']['Role'];
+			/** @description False after an invitation until the user sets a password. */
+			hasPassword: boolean;
+			/** @description Path of the user's picture, if any (and allowed). */
+			avatarUrl?: string | null;
+			organization: {
+				/** Format: uuid */
+				id: string;
+				name: string;
+				logoUrl?: string | null;
+				/** @description People may show a picture. */
+				profilePictures: boolean;
+			};
+		};
+		MeInput: {
+			name: string;
+			/** @description New password; null keeps the current one. */
+			password?: string | null;
+			/** @description Required to change an existing password. */
+			currentPassword?: string | null;
+		};
+		MyEnsemble: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+			/** @description Path of the logo image, if any. */
+			logoUrl?: string | null;
+			/** @description An emoji shown when there is no logo. */
+			symbol?: string | null;
+			color?: string | null;
+			leader: boolean;
+			/** @description Works of the ensemble with at least one part the user may see. */
+			works: components['schemas']['MyWork'][];
+			/** @description Programmes by date, undated last; their works refer to `works`. */
+			programs: components['schemas']['Program'][];
+		};
+		MyPart: {
+			/** Format: uuid */
+			id: string;
+			label: string;
+			/** Format: int32 */
+			pageCount: number;
+			/**
+			 * Format: date-time
+			 * @description Changes whenever the part's PDF is rendered again; offline copies compare it.
+			 */
+			updatedAt: string;
+		};
+		MyWork: {
+			/** Format: uuid */
+			id: string;
+			title: string;
+			composer?: string | null;
+			parts: components['schemas']['MyPart'][];
+		};
+		Notification: {
+			/** Format: uuid */
+			id: string;
+			kind: components['schemas']['NotificationKind'];
+			/**
+			 * @description What the text is made of, by kind – partsNew: work, part (missing when a whole work was given);
+			 *     programChanged: program, ensemble; loanDue: work, item, date, overdue; annotationsShared: by, part, work;
+			 *     guestLinkExpiring: guest, date.
+			 */
+			params: {
+				[key: string]: unknown;
+			};
+			/** @description A path of the web app. */
+			link?: string | null;
+			/** Format: date-time */
+			createdAt: string;
+			read: boolean;
+		};
+		/** @enum {string} */
+		NotificationKind:
+			'partsNew' | 'programChanged' | 'loanDue' | 'annotationsShared' | 'guestLinkExpiring';
+		NotificationSetting: {
+			inApp: boolean;
+			email: boolean;
+			/** @description Stored already; sending push messages comes later. */
+			push: boolean;
+		} & {
+			kind: components['schemas']['NotificationKind'];
+		};
+		Organization: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+			logoUrl?: string | null;
+			profilePictures: boolean;
+		};
+		Part: {
+			/** Format: uuid */
+			id: string;
+			/** Format: uuid */
+			workId: string;
+			/** Format: uuid */
+			sourceId: string;
+			label: string;
+			/** Format: uuid */
+			instrumentId?: string | null;
+			/** Format: int32 */
+			voice?: number | null;
+			pages: number[];
+			/** Format: int32 */
 			pageCount: number;
 			/** Format: date-time */
 			createdAt: string;
+			/** Format: date-time */
+			updatedAt: string;
+		};
+		PartInfo: components['schemas']['MyPart'] & {
+			/** Format: uuid */
+			workId: string;
+			workTitle: string;
+			composer?: string | null;
 		};
 		PartInput: {
 			/** @description Display name, e.g. "Clarinet 2" or "Full score". */
@@ -2167,7 +1863,10 @@ export interface components {
 			 * @description Null for parts without a single instrument (full score, choir).
 			 */
 			instrumentId?: string | null;
-			/** @description Part number for instruments with several parts (Clarinet 1, 2, 3). */
+			/**
+			 * Format: int32
+			 * @description Part number for instruments with several parts (Clarinet 1, 2, 3).
+			 */
 			voice?: number | null;
 			/**
 			 * Format: uuid
@@ -2177,21 +1876,348 @@ export interface components {
 			/** @description 1-based page numbers of the source file in the order the part shows them; each page at most once. */
 			pages: number[];
 		};
-		Part: components['schemas']['PartInput'] & {
+		/** @description A run of pages that belong to one part, read from the page headers. */
+		PartProposal: {
+			/** @description The header as printed on its first page ("2. Trompete in B"); none for pages before the first header. */
+			printed?: string | null;
+			/** Format: uuid */
+			instrumentId?: string | null;
+			/** Format: int32 */
+			voice?: number | null;
+			/** @description A score or similar ("Partitur", "Direktion") rather than one instrument. */
+			score: boolean;
+			/** @description 1-based. */
+			pages: number[];
+		};
+		/**
+		 * @description A self-describing export (account, ensembles, singleParts, annotations, loans, signIns); its fields may grow.
+		 *     It only describes the answer; the app builds it as JSON.
+		 */
+		PersonalData: {
+			/** Format: date-time */
+			exportedAt: string;
+			account: Record<string, never>;
+		};
+		PlayedPart: {
+			/** Format: uuid */
+			instrumentId: string;
+			/**
+			 * Format: int32
+			 * @description Null plays every part number of the instrument.
+			 */
+			voice?: number | null;
+		};
+		Program: {
+			/** Format: uuid */
+			id: string;
+			/** Format: uuid */
+			ensembleId: string;
+			name: string;
+			/** Format: date */
+			date?: string | null;
+			startTime?: string | null;
+			venue?: string | null;
+			notes?: string | null;
+			/** @description The works in playing order (also in `items`). */
+			workIds: string[];
+			/** @description Works and breaks in playing order. */
+			items: components['schemas']['ProgramItem'][];
+		};
+		ProgramInput: {
+			name: string;
+			/** Format: date */
+			date?: string | null;
+			/** @description "19:30". */
+			startTime?: string | null;
+			venue?: string | null;
+			notes?: string | null;
+		};
+		/** @description One entry of a programme in playing order: a work, or a break (interval, speech). */
+		ProgramItem:
+			| {
+					/** Format: uuid */
+					workId: string;
+					note?: string | null;
+					/** @enum {string} */
+					kind: 'work';
+			  }
+			| {
+					label: string;
+					/** Format: int32 */
+					durationSeconds?: number | null;
+					note?: string | null;
+					/** @enum {string} */
+					kind: 'break';
+			  };
+		Recognition: {
+			title?: string | null;
+			subtitle?: string | null;
+			composer?: string | null;
+			arranger?: string | null;
+			lyricist?: string | null;
+			publisher?: string | null;
+			/** @description The part as printed, e.g. "2. Trompete in B". */
+			part?: string | null;
+			/** Format: uuid */
+			instrumentId?: string | null;
+			/** Format: int32 */
+			voice?: number | null;
+			/** @description Only an AI reads the music itself. */
+			clef?: string | null;
+			key?: string | null;
+			timeSignature?: string | null;
+		} & {
+			/** @enum {string} */
+			method: 'text' | 'ocr' | 'none';
+			/** @description The external AI added to the result. */
+			ai: boolean;
+		};
+		/** @description What this server can do, found out on start. */
+		RecognitionAbilities: {
+			/** @description Text in digital PDFs. */
+			text: boolean;
+			/** @description Text in scans. */
+			ocr: boolean;
+			/** @description An external AI reads the page as well (also clef, key and time signature). */
+			ai: boolean;
+		};
+		Recording: {
 			/** Format: uuid */
 			id: string;
 			/** Format: uuid */
 			workId: string;
+			/** @enum {string} */
+			kind: 'full' | 'practice';
+			/** @enum {string} */
+			origin: 'recorded' | 'generated';
+			title: string;
+			/** Format: uuid */
+			partId?: string | null;
+			/** Format: uuid */
+			instrumentId?: string | null;
+			/** Format: int32 */
+			voice?: number | null;
+			fileName: string;
+			contentType: string;
+			/** Format: int64 */
+			size: number;
+			/** Format: float */
+			durationSeconds?: number | null;
+			/** Format: date-time */
+			createdAt: string;
+		};
+		RecordingInput: {
+			/** @enum {string} */
+			kind: 'full' | 'practice';
+			/** @enum {string} */
+			origin: 'recorded' | 'generated';
+			title: string;
+			/**
+			 * Format: uuid
+			 * @description Practice recordings only.
+			 */
+			partId?: string | null;
+			/**
+			 * Format: uuid
+			 * @description Practice recordings only, e.g. the voice "Sopran" when all voices share one score.
+			 */
+			instrumentId?: string | null;
+			/** Format: int32 */
+			voice?: number | null;
+			/**
+			 * Format: float
+			 * @description Measured by the uploading browser.
+			 */
+			durationSeconds?: number | null;
+		};
+		/**
+		 * @description What someone may do in an organisation.
+		 * @enum {string}
+		 */
+		Role: 'admin' | 'librarian' | 'leader' | 'member';
+		SetupInput: {
+			organizationName: string;
+			name: string;
+			email: string;
+			password: string;
+		};
+		SharedAnnotations: {
+			/** Format: uuid */
+			ensembleId: string;
+			ensemble: string;
+			pages: {
+				[key: string]: components['schemas']['Stroke'][];
+			};
+			/** Format: date-time */
+			updatedAt?: string | null;
+			updatedBy?: string | null;
+			/** @description The user may change this layer (leaders of the ensemble, staff). */
+			canEdit: boolean;
+		};
+		SourceFile: {
+			/** Format: uuid */
+			id: string;
+			/** Format: uuid */
+			workId: string;
+			fileName: string;
+			/**
+			 * Format: int64
+			 * @description Bytes.
+			 */
+			size: number;
+			sha256: string;
+			/** Format: int32 */
 			pageCount: number;
+			/** Format: date-time */
+			createdAt: string;
+		};
+		Stroke: {
+			/** @enum {string} */
+			tool: 'pen' | 'highlighter';
+			color: string;
+			/**
+			 * Format: float
+			 * @description Line width as a fraction of the page width.
+			 */
+			width: number;
+			/** @description Points as [x, y], each 0 to 1 – 0,0 is the page's top left, 1,1 its bottom right. */
+			points: number[][];
+		};
+		System: {
+			version: string;
+			publicUrl: string;
+			/** @enum {string} */
+			language: 'en' | 'de';
+			/** @description s3 or fs. */
+			storage: string;
+			maxUploadBytes: number;
+			/** @description The sender of emails; none when the server sends none. */
+			mailFrom?: string | null;
+			recognition: components['schemas']['RecognitionAbilities'];
+			/** @description The external AI reading pages, if any. */
+			ai?: string | null;
+			sso?: string | null;
+			counts: {
+				/** Format: int64 */
+				people: number;
+				/** Format: int64 */
+				ensembles: number;
+				/** Format: int64 */
+				works: number;
+				/** Format: int64 */
+				parts: number;
+				/** Format: int64 */
+				recordings: number;
+				/**
+				 * Format: int64
+				 * @description Uploaded sources, recordings and images; parts are cut from the sources and not counted twice.
+				 */
+				storedBytes: number;
+			};
+			checklist: {
+				/** @enum {string} */
+				key:
+					| 'logo'
+					| 'instruments'
+					| 'ensembles'
+					| 'people'
+					| 'music'
+					| 'mail'
+					| 'testMail'
+					| 'sso'
+					| 'backups';
+				done: boolean;
+				/** @description Not needed for every organisation. */
+				optional: boolean;
+				/** @description Ticked by hand rather than recognised. */
+				manual: boolean;
+			}[];
+		};
+		User: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+			email?: string | null;
+			role: components['schemas']['Role'];
+			hasPassword: boolean;
+			/** Format: date-time */
+			lastLoginAt?: string | null;
+			avatarUrl?: string | null;
+		} & {
+			/** @description Only for admins. */
+			ensembles?: components['schemas']['EnsembleRef'][] | null;
+		};
+		UserInput: {
+			name: string;
+			email: string;
+			role: components['schemas']['Role'];
+		};
+		Work: {
+			/** Format: uuid */
+			id: string;
+			title: string;
+			composer?: string | null;
+			arranger?: string | null;
+			publisher?: string | null;
+			lyricist?: string | null;
+			societyNumber?: string | null;
+			archiveLocation?: string | null;
+			instrumentation?: string | null;
+			/** Format: int32 */
+			difficulty?: number | null;
+			/** Format: int32 */
+			durationSeconds?: number | null;
+			source?: string | null;
+			notes?: string | null;
+			tags: string[];
 			/** Format: date-time */
 			createdAt: string;
 			/** Format: date-time */
 			updatedAt: string;
 		};
+		WorkDetail: components['schemas']['Work'] & {
+			sources: components['schemas']['SourceFile'][];
+			parts: components['schemas']['Part'][];
+		};
+		/** @description Values already used on works, most used first, for suggestions while typing. */
+		WorkFacets: {
+			composers: string[];
+			arrangers: string[];
+			publishers: string[];
+			instrumentations: string[];
+			tags: string[];
+		};
+		WorkInput: {
+			title: string;
+			composer?: string | null;
+			arranger?: string | null;
+			publisher?: string | null;
+			lyricist?: string | null;
+			/** @description The performing rights society's number of the work (e.g. GEMA-Werknummer). */
+			societyNumber?: string | null;
+			/** @description Where the printed copies are kept, e.g. "Schrank 3, Fach B". */
+			archiveLocation?: string | null;
+			/** @description Free text, e.g. "Symphonic band" or "SATB". */
+			instrumentation?: string | null;
+			/** Format: int32 */
+			difficulty?: number | null;
+			/** Format: int32 */
+			durationSeconds?: number | null;
+			/** @description Where the music comes from or under which licence it is used (free text, for the operator). */
+			source?: string | null;
+			notes?: string | null;
+			tags?: string[];
+		};
+		WorkSummary: components['schemas']['Work'] & {
+			/** Format: int64 */
+			sourceCount: number;
+			/** Format: int64 */
+			partCount: number;
+		};
 	};
 	responses: {
-		/** @description Not signed in, or the credentials or token are wrong or expired. */
-		Unauthorized: {
+		/** @description Clashes with existing data, e.g. a name or email that is taken. */
+		Conflict: {
 			headers: {
 				[name: string]: unknown;
 			};
@@ -2208,17 +2234,8 @@ export interface components {
 				'application/json': components['schemas']['Error'];
 			};
 		};
-		/** @description Clashes with existing data, e.g. a name or email that is taken. */
-		Conflict: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': components['schemas']['Error'];
-			};
-		};
-		/** @description Too many attempts; try again later. */
-		TooManyRequests: {
+		/** @description The request is well-formed but its content is not acceptable. */
+		Invalid: {
 			headers: {
 				[name: string]: unknown;
 			};
@@ -2235,8 +2252,17 @@ export interface components {
 				'application/json': components['schemas']['Error'];
 			};
 		};
-		/** @description The request is well-formed but its content is not acceptable. */
-		Invalid: {
+		/** @description Too many attempts; try again later. */
+		TooManyRequests: {
+			headers: {
+				[name: string]: unknown;
+			};
+			content: {
+				'application/json': components['schemas']['Error'];
+			};
+		};
+		/** @description Not signed in, or the credentials or token are wrong or expired. */
+		Unauthorized: {
 			headers: {
 				[name: string]: unknown;
 			};
@@ -2245,16 +2271,7 @@ export interface components {
 			};
 		};
 	};
-	parameters: {
-		InstrumentId: string;
-		FamilyId: string;
-		UserId: string;
-		ProgramId: string;
-		EnsembleId: string;
-		WorkId: string;
-		SourceId: string;
-		PartId: string;
-	};
+	parameters: never;
 	requestBodies: never;
 	headers: never;
 	pathItems: never;
@@ -2484,7 +2501,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
@@ -2513,7 +2530,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				programId: components['parameters']['ProgramId'];
+				programId: string;
 			};
 			cookie?: never;
 		};
@@ -2542,7 +2559,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				programId: components['parameters']['ProgramId'];
+				programId: string;
 			};
 			cookie?: never;
 		};
@@ -2564,7 +2581,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				programId: components['parameters']['ProgramId'];
+				programId: string;
 			};
 			cookie?: never;
 		};
@@ -2595,7 +2612,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
@@ -2619,7 +2636,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
@@ -2643,9 +2660,9 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-				partId: components['parameters']['PartId'];
-				userId: components['parameters']['UserId'];
+				ensembleId: string;
+				partId: string;
+				userId: string;
 			};
 			cookie?: never;
 		};
@@ -2668,9 +2685,9 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-				partId: components['parameters']['PartId'];
-				userId: components['parameters']['UserId'];
+				ensembleId: string;
+				partId: string;
+				userId: string;
 			};
 			cookie?: never;
 		};
@@ -2821,7 +2838,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				userId: components['parameters']['UserId'];
+				userId: string;
 			};
 			cookie?: never;
 		};
@@ -2851,7 +2868,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				userId: components['parameters']['UserId'];
+				userId: string;
 			};
 			cookie?: never;
 		};
@@ -2882,7 +2899,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				userId: components['parameters']['UserId'];
+				userId: string;
 			};
 			cookie?: never;
 		};
@@ -2953,7 +2970,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
@@ -2976,7 +2993,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
@@ -3006,7 +3023,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
@@ -3028,8 +3045,8 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-				userId: components['parameters']['UserId'];
+				ensembleId: string;
+				userId: string;
 			};
 			cookie?: never;
 		};
@@ -3058,8 +3075,8 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-				userId: components['parameters']['UserId'];
+				ensembleId: string;
+				userId: string;
 			};
 			cookie?: never;
 		};
@@ -3081,8 +3098,8 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-				workId: components['parameters']['WorkId'];
+				ensembleId: string;
+				workId: string;
 			};
 			cookie?: never;
 		};
@@ -3104,8 +3121,8 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
-				workId: components['parameters']['WorkId'];
+				ensembleId: string;
+				workId: string;
 			};
 			cookie?: never;
 		};
@@ -3174,7 +3191,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				instrumentId: components['parameters']['InstrumentId'];
+				instrumentId: string;
 			};
 			cookie?: never;
 		};
@@ -3204,7 +3221,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				instrumentId: components['parameters']['InstrumentId'];
+				instrumentId: string;
 			};
 			cookie?: never;
 		};
@@ -3227,14 +3244,17 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				instrumentId: components['parameters']['InstrumentId'];
+				instrumentId: string;
 			};
 			cookie?: never;
 		};
 		requestBody: {
 			content: {
 				'application/json': {
-					/** Format: uuid */
+					/**
+					 * Format: uuid
+					 * @description The instrument that stays.
+					 */
 					into: string;
 				};
 			};
@@ -3306,7 +3326,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				familyId: components['parameters']['FamilyId'];
+				familyId: string;
 			};
 			cookie?: never;
 		};
@@ -3336,7 +3356,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				familyId: components['parameters']['FamilyId'];
+				familyId: string;
 			};
 			cookie?: never;
 		};
@@ -3384,7 +3404,10 @@ export interface operations {
 		requestBody: {
 			content: {
 				'multipart/form-data': {
-					/** Format: binary */
+					/**
+					 * Format: binary
+					 * @description One file. The server's upload limit applies (413 when exceeded).
+					 */
 					file: string;
 				};
 			};
@@ -3483,7 +3506,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				workId: components['parameters']['WorkId'];
+				workId: string;
 			};
 			cookie?: never;
 		};
@@ -3506,7 +3529,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				workId: components['parameters']['WorkId'];
+				workId: string;
 			};
 			cookie?: never;
 		};
@@ -3789,7 +3812,7 @@ export interface operations {
 				'multipart/form-data': {
 					/**
 					 * Format: binary
-					 * @description PNG, JPEG or WebP, at most 2 MB.
+					 * @description One file. The server's upload limit applies (413 when exceeded).
 					 */
 					file: string;
 				};
@@ -3832,7 +3855,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
@@ -3841,7 +3864,7 @@ export interface operations {
 				'multipart/form-data': {
 					/**
 					 * Format: binary
-					 * @description PNG, JPEG or WebP, at most 2 MB.
+					 * @description One file. The server's upload limit applies (413 when exceeded).
 					 */
 					file: string;
 				};
@@ -3864,7 +3887,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
@@ -3884,15 +3907,16 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
 		requestBody: {
 			content: {
 				'application/json': {
-					/** @description One emoji or up to four characters; null for initials. */
+					/** @description An emoji (or a few characters); null for initials. */
 					symbol?: string | null;
+					/** @description "#RRGGBB"; null for the colour derived from the name. */
 					color?: string | null;
 				};
 			};
@@ -3920,7 +3944,7 @@ export interface operations {
 				'multipart/form-data': {
 					/**
 					 * Format: binary
-					 * @description PNG, JPEG or WebP, at most 2 MB.
+					 * @description One file. The server's upload limit applies (413 when exceeded).
 					 */
 					file: string;
 				};
@@ -3967,7 +3991,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				workId: components['parameters']['WorkId'];
+				workId: string;
 			};
 			cookie?: never;
 		};
@@ -3990,7 +4014,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				workId: components['parameters']['WorkId'];
+				workId: string;
 			};
 			cookie?: never;
 		};
@@ -3999,7 +4023,7 @@ export interface operations {
 				'multipart/form-data': {
 					/**
 					 * Format: binary
-					 * @description MP3, AAC/M4A, WAV, FLAC, Ogg, Opus, WebM audio or AIFF; no video.
+					 * @description The audio file.
 					 */
 					file: string;
 					/** @description RecordingInput as JSON. */
@@ -4125,7 +4149,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
@@ -4148,21 +4172,16 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				ensembleId: components['parameters']['EnsembleId'];
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
 		requestBody: {
 			content: {
 				'application/json': {
-					/** @description Who it is for, e.g. "Max, trumpet substitute". */
 					name: string;
-					/** @description Parts of the ensemble's works. */
 					partIds: string[];
-					/**
-					 * Format: date
-					 * @description The last day it works; within a year.
-					 */
+					/** Format: date */
 					expiresOn: string;
 				};
 			};
@@ -4238,7 +4257,7 @@ export interface operations {
 			header?: never;
 			path: {
 				token: string;
-				partId: components['parameters']['PartId'];
+				partId: string;
 			};
 			cookie?: never;
 		};
@@ -4373,7 +4392,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				userId: components['parameters']['UserId'];
+				userId: string;
 			};
 			cookie?: never;
 		};
@@ -4489,7 +4508,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				workId: components['parameters']['WorkId'];
+				workId: string;
 			};
 			cookie?: never;
 		};
@@ -4512,7 +4531,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				workId: components['parameters']['WorkId'];
+				workId: string;
 			};
 			cookie?: never;
 		};
@@ -4540,7 +4559,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				workId: components['parameters']['WorkId'];
+				workId: string;
 			};
 			cookie?: never;
 		};
@@ -4561,7 +4580,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				workId: components['parameters']['WorkId'];
+				workId: string;
 			};
 			cookie?: never;
 		};
@@ -4570,7 +4589,7 @@ export interface operations {
 				'multipart/form-data': {
 					/**
 					 * Format: binary
-					 * @description One PDF. The server's upload limit applies (413 when exceeded).
+					 * @description One file. The server's upload limit applies (413 when exceeded).
 					 */
 					file: string;
 				};
@@ -4611,7 +4630,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				sourceId: components['parameters']['SourceId'];
+				sourceId: string;
 			};
 			cookie?: never;
 		};
@@ -4632,7 +4651,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				sourceId: components['parameters']['SourceId'];
+				sourceId: string;
 			};
 			cookie?: never;
 		};
@@ -4656,7 +4675,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				sourceId: components['parameters']['SourceId'];
+				sourceId: string;
 			};
 			cookie?: never;
 		};
@@ -4681,7 +4700,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				sourceId: components['parameters']['SourceId'];
+				sourceId: string;
 			};
 			cookie?: never;
 		};
@@ -4704,7 +4723,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				workId: components['parameters']['WorkId'];
+				workId: string;
 			};
 			cookie?: never;
 		};
@@ -4732,7 +4751,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				partId: components['parameters']['PartId'];
+				partId: string;
 			};
 			cookie?: never;
 		};
@@ -4760,7 +4779,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				partId: components['parameters']['PartId'];
+				partId: string;
 			};
 			cookie?: never;
 		};
@@ -4781,7 +4800,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				partId: components['parameters']['PartId'];
+				partId: string;
 			};
 			cookie?: never;
 		};
@@ -4804,7 +4823,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				partId: components['parameters']['PartId'];
+				partId: string;
 			};
 			cookie?: never;
 		};
@@ -4827,8 +4846,8 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				partId: components['parameters']['PartId'];
-				ensembleId: components['parameters']['EnsembleId'];
+				partId: string;
+				ensembleId: string;
 			};
 			cookie?: never;
 		};
@@ -4855,14 +4874,14 @@ export interface operations {
 	annotatedPartFile: {
 		parameters: {
 			query?: {
-				/** @description Include the user's own annotations. */
+				/** @description The user's own annotations (default yes). */
 				own?: boolean;
-				/** @description Include the leaders' shared markings (beneath one's own). */
+				/** @description The leaders' shared markings (default yes). */
 				shared?: boolean;
 			};
 			header?: never;
 			path: {
-				partId: components['parameters']['PartId'];
+				partId: string;
 			};
 			cookie?: never;
 		};
@@ -4885,7 +4904,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				partId: components['parameters']['PartId'];
+				partId: string;
 			};
 			cookie?: never;
 		};
@@ -4908,7 +4927,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				partId: components['parameters']['PartId'];
+				partId: string;
 			};
 			cookie?: never;
 		};
@@ -4936,7 +4955,7 @@ export interface operations {
 			query?: never;
 			header?: never;
 			path: {
-				partId: components['parameters']['PartId'];
+				partId: string;
 			};
 			cookie?: never;
 		};

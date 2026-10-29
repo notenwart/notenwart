@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Avatars (`images` in api/openapi.yaml): the organisation's logo, ensemble logos and people's pictures. PNG, JPEG
+//! Avatars (`images` in api/openapi.json): the organisation's logo, ensemble logos and people's pictures. PNG, JPEG
 //! or WebP up to 2 MB (the web app scales them down before uploading); no SVG, which can carry scripts. Ensembles
 //! without a logo show a symbol (an emoji on a colour), people without a picture their initials.
 //!
@@ -126,7 +126,7 @@ async fn leads(state: &App, leader: Uuid, member: Uuid) -> AppResult<bool> {
 
 // ---- the organisation ----
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Organization {
     id: Uuid,
@@ -146,7 +146,7 @@ pub async fn organization(state: &App, user: &CurrentUser) -> AppResult<Organiza
     find_organization(state, user.organization_id).await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct OrganizationInput {
     name: String,
@@ -233,7 +233,7 @@ pub async fn remove_ensemble_logo(state: &App, user: &CurrentUser, ensemble_id: 
     Ok(())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SymbolInput {
     /// An emoji (or a few characters); null for initials.

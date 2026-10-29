@@ -66,8 +66,9 @@ pnpm --dir web build
 - **Licence header:** every new source file starts with `SPDX-License-Identifier: AGPL-3.0-or-later`; files in `api/`
   with `MIT`. Never copy server or web code into `api/` – it only describes the HTTP API.
 <!-- REUSE-IgnoreEnd -->
-- **API first:** change `api/openapi.yaml`, then implement it in `crates/` and regenerate the web types with
-  `pnpm --dir web api:types`.
+- **The API is described in the code** (utoipa): a `#[utoipa::path]` on every handler in `notenwart-api`, `ToSchema`
+  on every type it takes or gives. After a change, write the description and regenerate the web types:
+  `cargo run -p notenwart -- openapi > api/openapi.json`, then `pnpm --dir web api:types` (CI checks both).
 - **Every command checks the role** (in `notenwart-app`, via `CurrentUser`), and every new rule gets an API test in
   `crates/notenwart-api/tests/`.
 - **Dependencies:** exact versions in the root `Cargo.toml`, each the newest that is at least two weeks old – run
@@ -93,7 +94,8 @@ git commit -s
 
 ## Releases
 
-Bump the version in `Cargo.toml`, `web/package.json` and `api/openapi.yaml`, turn `[Unreleased]` in `CHANGELOG.md`
+Bump the version in `Cargo.toml` and `web/package.json` (the API description takes it from Cargo – regenerate
+`api/openapi.json`), turn `[Unreleased]` in `CHANGELOG.md`
 into the version's section, commit, then tag `vX.Y.Z`. The release workflow checks the tag against `Cargo.toml` and
 the changelog, publishes the image
 `ghcr.io/notenwart/notenwart:X.Y.Z` (and `:latest`) and creates a GitHub release from the changelog section.

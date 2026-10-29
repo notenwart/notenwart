@@ -60,13 +60,14 @@ pnpm --dir web dev                                # web app on :5173, proxies /a
 | `crates/notenwart-store/` | PostgreSQL (connection, migrations in `migrations/`, applied on start) and the object store |
 | `crates/notenwart-app/` | Every command and query, with the caller's role checked – the one layer the interfaces use |
 | `crates/notenwart-api/` | The HTTP API under `/api` (axum) and the embedded web app with its Content-Security-Policy |
-| `crates/notenwart/` | The binary: `serve`, `migrate` |
+| `crates/notenwart/` | The binary: `serve`, `migrate`, `openapi` |
 | `web/` | Web app / PWA (Vite, Svelte 5, TypeScript), built to `web/dist` and embedded into the binary |
-| `api/openapi.yaml` | The API contract – **MIT-licensed**, the base for every client |
+| `api/openapi.json` | The API description, generated from the code (`notenwart openapi`) – **MIT-licensed**, the base for every client |
 | `deploy/` | Docker Compose files |
 | `docs/` | Documentation for notenwart.dev – user guide (English and German), operations, API, contributing, spec; `docs/assets/` holds copies from [notenwart/brand](https://github.com/notenwart/brand) |
 
-Change the API in `api/openapi.yaml` first, then regenerate the web types with `pnpm --dir web api:types`.
+The API is described in the code (utoipa). After changing it: `cargo run -p notenwart -- openapi > api/openapi.json`,
+then `pnpm --dir web api:types`.
 After changing SQL, refresh the offline query data (needs the dev database and
 `cargo install sqlx-cli --no-default-features --features postgres,rustls`):
 

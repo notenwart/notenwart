@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Recordings of works (`recordings` in api/openapi.yaml): full recordings and practice recordings of a part or
+//! Recordings of works (`recordings` in api/openapi.json): full recordings and practice recordings of a part or
 //! voice, recorded or generated. Audio only, in the common formats (MP3, AAC/M4A including voice memos, WAV, FLAC,
 //! Ogg/Opus, WebM audio, AIFF). Served with HTTP ranges, so players can seek.
 //!
@@ -54,12 +54,14 @@ pub fn audio_type(bytes: &[u8], file_name: &str) -> Option<&'static str> {
     None
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Recording {
     id: Uuid,
     work_id: Uuid,
+    #[schema(schema_with = crate::schema::strings::<RecordingKind>)]
     kind: String,
+    #[schema(schema_with = crate::schema::strings::<RecordingOrigin>)]
     origin: String,
     title: String,
     part_id: Option<Uuid>,
@@ -131,16 +133,39 @@ pub async fn list(state: &App, user: &CurrentUser, work_id: Uuid) -> AppResult<V
     recordings(state, work_id).await
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RecordingInput {
+    /// A recording of the whole work, or a practice recording of one part or voice.
+    #[schema(schema_with = crate::schema::strings::<RecordingKind>)]
     kind: String,
+    /// Played and recorded, or generated (e.g. from MIDI or notation software).
+    #[schema(schema_with = crate::schema::strings::<RecordingOrigin>)]
     origin: String,
     title: String,
+    /// Practice recordings only.
     part_id: Option<Uuid>,
+    /// Practice recordings only, e.g. the voice "Sopran" when all voices share one score.
     instrument_id: Option<Uuid>,
     voice: Option<i16>,
+    /// Measured by the uploading browser.
     duration_seconds: Option<f32>,
+}
+
+/// The kinds of recordings, as the API names them.
+#[derive(Debug)]
+pub struct RecordingKind;
+
+impl crate::schema::Strings for RecordingKind {
+    const VALUES: &[&str] = &["full", "practice"];
+}
+
+/// Where recordings come from, as the API names it.
+#[derive(Debug)]
+pub struct RecordingOrigin;
+
+impl crate::schema::Strings for RecordingOrigin {
+    const VALUES: &[&str] = &["recorded", "generated"];
 }
 
 struct Checked {

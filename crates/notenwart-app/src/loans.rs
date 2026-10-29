@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! The paper archive's loans (`loans` in api/openapi.yaml): which printed parts of a work someone has borrowed.
+//! The paper archive's loans (`loans` in api/openapi.json): which printed parts of a work someone has borrowed.
 //! Admins and librarians keep them; everyone sees their own.
 
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use crate::App;
 use crate::auth::CurrentUser;
 use crate::error::{AppError, AppResult};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Loan {
     id: Uuid,
@@ -20,15 +20,19 @@ pub struct Loan {
     quantity: i32,
     borrower_id: Option<Uuid>,
     borrower_name: String,
+    #[schema(format = Date)]
     lent_on: String,
+    #[schema(format = Date)]
     due_on: Option<String>,
+    #[schema(format = Date)]
     returned_on: Option<String>,
     note: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct LoanInput {
+    /// What was lent, e.g. "Trompete 2" or "complete set".
     item: String,
     #[serde(default)]
     quantity: Option<i32>,
@@ -36,8 +40,12 @@ pub struct LoanInput {
     borrower_id: Option<Uuid>,
     /// Someone without an account.
     borrower_name: Option<String>,
+    /// Today when omitted.
+    #[schema(format = Date)]
     lent_on: Option<String>,
+    #[schema(format = Date)]
     due_on: Option<String>,
+    #[schema(format = Date)]
     returned_on: Option<String>,
     note: Option<String>,
 }
@@ -131,11 +139,29 @@ async fn loans(
     .await?)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct Filter {
-    /// `all` includes returned loans.
+    /// `open` (default) leaves out returned loans.
+    #[param(inline, value_type = Show, required = false)]
     show: Option<String>,
 }
+
+/// Which loans to list, as the API names it.
+#[derive(Debug)]
+pub struct Show;
+
+impl crate::schema::Strings for Show {
+    const VALUES: &[&str] = &["open", "all"];
+}
+
+impl utoipa::PartialSchema for Show {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::Schema> {
+        crate::schema::strings::<Show>().into()
+    }
+}
+
+impl utoipa::ToSchema for Show {}
 
 pub async fn list(state: &App, user: &CurrentUser, filter: Filter) -> AppResult<Vec<Loan>> {
     user.require(user.is_staff())?;
@@ -225,7 +251,7 @@ pub async fn remove(state: &App, user: &CurrentUser, loan_id: Uuid) -> AppResult
     Ok(())
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct Borrower {
     id: Uuid,
     name: String,

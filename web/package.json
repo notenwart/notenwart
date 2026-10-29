@@ -16,7 +16,7 @@
 		"check:watch": "svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
-		"api:types": "openapi-typescript ../api/openapi.yaml -o src/lib/api/schema.d.ts && prettier --write src/lib/api/schema.d.ts",
+		"api:types": "openapi-typescript ../api/openapi.json -o src/lib/api/schema.d.ts && prettier --write src/lib/api/schema.d.ts",
 		"test": "vitest run"
 	},
 	"imports": {

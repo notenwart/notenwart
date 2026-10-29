@@ -110,19 +110,22 @@ pub async fn current_user(state: &App, token: &str) -> AppResult<Option<CurrentU
     user_for_session(state, &hash_token(token)).await
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Me {
     id: Uuid,
     name: String,
     email: String,
     role: Role,
+    /// False after an invitation until the user sets a password.
     has_password: bool,
+    /// Path of the user's picture, if any (and allowed).
     avatar_url: Option<String>,
+    #[schema(inline)]
     organization: OrganizationRef,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OrganizationRef {
     id: Uuid,
@@ -303,21 +306,25 @@ impl RateLimiter {
 
 // ---- handlers ----
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthStatus {
+    /// The server has no users yet; `/auth/setup` creates the first admin.
     setup_required: bool,
+    /// The server can send email (sign-in links, invitations).
     mail_enabled: bool,
+    /// Largest PDF the server accepts in one upload.
     max_upload_bytes: usize,
     recognition: crate::recognize::Abilities,
     /// Name of the identity provider to sign in with, if one is set up.
     sso: Option<String>,
     /// The organisation's name and logo, for the sign-in page.
+    #[schema(inline)]
     organization: Option<PublicOrganization>,
     user: Option<Me>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PublicOrganization {
     name: String,
@@ -347,7 +354,7 @@ pub async fn status(state: &App, session: Option<&str>) -> AppResult<AuthStatus>
     })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SetupInput {
     organization_name: String,
@@ -395,7 +402,7 @@ pub async fn setup(state: &App, input: SetupInput) -> AppResult<Session> {
     start_session(state, user_id).await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct LoginInput {
     email: String,
     password: String,
@@ -422,7 +429,7 @@ pub async fn login(state: &App, input: LoginInput) -> AppResult<Session> {
     start_session(state, user_id).await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct MagicLinkInput {
     email: String,
 }
@@ -444,7 +451,7 @@ pub async fn magic_link(state: &App, input: MagicLinkInput) -> AppResult<()> {
     Ok(())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct TokenInput {
     token: String,
 }
@@ -473,11 +480,13 @@ pub fn me(user: &CurrentUser) -> Me {
     user.clone().into()
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MeInput {
     name: String,
+    /// New password; null keeps the current one.
     password: Option<String>,
+    /// Required to change an existing password.
     current_password: Option<String>,
 }
 

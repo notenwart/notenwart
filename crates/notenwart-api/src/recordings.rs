@@ -28,10 +28,45 @@ pub fn router(max_upload: usize) -> Router<App> {
         .route("/recordings/{recording_id}/file", get(file))
 }
 
+#[utoipa::path(
+    get,
+    path = "/works/{workId}/recordings",
+    tag = "recordings",
+    operation_id = "listRecordings",
+    summary = "Recordings of a work (whoever sees a part of it)",
+    params(
+        ("workId" = uuid::Uuid, Path),
+    ),
+    responses(
+        (
+            status = 200,
+            description = "Full recordings first, then practice recordings, by title.",
+            body = Vec<Recording>,
+        ),
+        (status = 404, response = crate::openapi::NotFound),
+    ),
+)]
 async fn list(State(state): State<App>, user: SignedIn, Path(work_id): Path<Uuid>) -> ApiResult<Json<Vec<Recording>>> {
     Ok(Json(app::list(&state, &user, work_id).await?))
 }
 
+#[utoipa::path(
+    put,
+    path = "/recordings/{recordingId}",
+    tag = "recordings",
+    operation_id = "updateRecording",
+    summary = "Change what a recording is (admin, librarian, leaders of an ensemble with the work)",
+    params(
+        ("recordingId" = uuid::Uuid, Path),
+    ),
+    request_body = RecordingInput,
+    responses(
+        (status = 200, description = "Saved.", body = Recording),
+        (status = 403, response = crate::openapi::Forbidden),
+        (status = 404, response = crate::openapi::NotFound),
+        (status = 422, response = crate::openapi::Invalid),
+    ),
+)]
 async fn update(
     State(state): State<App>,
     user: SignedIn,
@@ -41,6 +76,21 @@ async fn update(
     Ok(Json(app::update(&state, &user, recording_id, input).await?))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/recordings/{recordingId}",
+    tag = "recordings",
+    operation_id = "deleteRecording",
+    summary = "Delete a recording (admin, librarian, leaders of an ensemble with the work)",
+    params(
+        ("recordingId" = uuid::Uuid, Path),
+    ),
+    responses(
+        (status = 204, description = "Deleted."),
+        (status = 403, response = crate::openapi::Forbidden),
+        (status = 404, response = crate::openapi::NotFound),
+    ),
+)]
 async fn remove(State(state): State<App>, user: SignedIn, Path(recording_id): Path<Uuid>) -> ApiResult<StatusCode> {
     app::remove(&state, &user, recording_id).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -69,6 +119,24 @@ async fn read_upload(mut multipart: Multipart) -> Result<RecordingUpload, AppErr
     Ok(upload)
 }
 
+#[utoipa::path(
+    post,
+    path = "/works/{workId}/recordings",
+    tag = "recordings",
+    operation_id = "uploadRecording",
+    summary = "Add a recording (admin, librarian, leaders of an ensemble with the work)",
+    params(
+        ("workId" = uuid::Uuid, Path),
+    ),
+    request_body(content = inline(crate::openapi::RecordingForm), content_type = "multipart/form-data"),
+    responses(
+        (status = 201, description = "Stored.", body = Recording),
+        (status = 403, response = crate::openapi::Forbidden),
+        (status = 409, response = crate::openapi::Conflict),
+        (status = 413, description = "Larger than the server allows."),
+        (status = 422, response = crate::openapi::Invalid),
+    ),
+)]
 async fn upload(
     State(state): State<App>,
     user: SignedIn,
@@ -79,6 +147,28 @@ async fn upload(
     Ok((StatusCode::CREATED, Json(app::upload(&state, &user, work_id, upload).await?)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/recordings/{recordingId}/file",
+    tag = "recordings",
+    operation_id = "recordingFile",
+    summary = "The audio (whoever sees a part of the work); supports Range requests",
+    params(
+        ("recordingId" = uuid::Uuid, Path),
+        ("Range" = Option<String>, Header, nullable = false, description = "One byte range, e.g. `bytes=0-`."),
+    ),
+    responses(
+        (
+            status = 200,
+            description = "The whole file.",
+            body = inline(crate::openapi::Binary),
+            content_type = "audio/*",
+        ),
+        (status = 206, description = "The requested range."),
+        (status = 404, response = crate::openapi::NotFound),
+        (status = 416, description = "The range cannot be served."),
+    ),
+)]
 async fn file(
     State(state): State<App>,
     user: SignedIn,

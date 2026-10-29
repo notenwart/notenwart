@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Why a command did not happen. The API turns each into a status and the `Error` schema of `api/openapi.yaml`.
+//! Why a command did not happen. The API turns each into a status and the `Error` schema of `api/openapi.json`.
 
 #[derive(Debug)]
 pub enum AppError {

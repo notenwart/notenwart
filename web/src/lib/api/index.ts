@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Typed client for the API in ../api/openapi.yaml. Regenerate the types with `pnpm api:types`.
+// Typed client for the API in ../api/openapi.json. Regenerate the types with `pnpm api:types`.
 import createClient from 'openapi-fetch';
 import type { components, paths } from './schema';
 import { t } from '../i18n/index.svelte.js';
