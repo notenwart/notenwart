@@ -6,13 +6,13 @@ permalink: /contributing/
 
 # Contributing
 
-notenwart is one repository: the Rust server in `server/`, the web app (SvelteKit, TypeScript) in `web/`, embedded
-into the server binary, the API contract in `api/`, deployment files in `deploy/`, the brand kit in `brand/` and this
+notenwart is one repository: the Rust workspace in `crates/`, the web app (SvelteKit, TypeScript) in `web/`, embedded
+into the binary, the API contract in `api/`, deployment files in `deploy/`, the brand kit in `brand/` and this
 documentation in `docs/`.
 
 ## Set up
 
-Requirements: Rust (stable), Node.js 24 with pnpm, Docker.
+Requirements: Rust (the toolchain in `rust-toolchain.toml`; rustup fetches it), Node.js 24 with pnpm, Docker.
 
 ```sh
 docker compose -f deploy/compose.dev.yaml up -d   # PostgreSQL on :5432, Garage S3 on :3900
@@ -26,6 +26,21 @@ Recognition needs `pdftotext`, `pdftoppm` and Tesseract with German and English 
 `tesseract-ocr-deu`, `tesseract-ocr-eng`; on macOS `brew install poppler tesseract tesseract-lang`); without them
 the server runs and says what is missing.
 
+## The Rust workspace
+
+Each layer uses only the ones below it:
+
+| Crate | What |
+|---|---|
+| `notenwart-core` | The domain without I/O: roles, email texts, PDF pages and annotations |
+| `notenwart-store` | PostgreSQL (connection, `migrations/`) and the object store (S3 or a directory) |
+| `notenwart-app` | Every command and query: takes the caller (`CurrentUser`) and plain input, checks the role, answers with plain data or an `AppError`; no HTTP |
+| `notenwart-api` | The HTTP API (axum): routes, the session cookie, multipart, status codes; the embedded web app with its Content-Security-Policy; the API tests in `tests/` |
+| `notenwart` | The binary: `serve`, `migrate` |
+
+A new feature gets its command in `notenwart-app` and a thin handler in `notenwart-api` that only takes the request
+apart and turns the answer into HTTP.
+
 ## Checks
 
 Every change passes all of these before it is committed – CI runs the same:
@@ -34,6 +49,7 @@ Every change passes all of these before it is committed – CI runs the same:
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test                      # needs the dev database; every test gets its own
+cargo deny check                # advisories, licences, sources (cargo install cargo-deny --locked)
 pnpm --dir web lint
 pnpm --dir web check
 pnpm --dir web test
@@ -48,9 +64,13 @@ pnpm --dir web build
 - **The name** is always lowercase: notenwart, also at the start of a sentence.
 - **Licence header:** every new source file starts with `SPDX-License-Identifier: AGPL-3.0-or-later`; files in `api/`
   with `MIT`. Never copy server or web code into `api/` – it only describes the HTTP API.
-- **API first:** change `api/openapi.yaml`, then implement it in `server/` and regenerate the web types with
+- **API first:** change `api/openapi.yaml`, then implement it in `crates/` and regenerate the web types with
   `pnpm --dir web api:types`.
-- **Every handler checks the role**, and every new rule gets an API test in `server/tests/`.
+- **Every command checks the role** (in `notenwart-app`, via `CurrentUser`), and every new rule gets an API test in
+  `crates/notenwart-api/tests/`.
+- **Dependencies:** exact versions in the root `Cargo.toml`, each the newest that is at least two weeks old – run
+  `scripts/check-age.py` after changing `Cargo.lock` (`--fix` sets young ones back); only the fix of a security
+  advisory may be younger (listed in the script with its advisory).
 - **SQL:** queries are checked at compile time against `.sqlx/`. After changing one, run
   `cargo sqlx prepare --workspace -- --all-targets` (needs the dev database and
   `cargo install sqlx-cli --no-default-features --features postgres,rustls`) and commit `.sqlx/`. Migrations are
