@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+[package]
+name = "notenwart-store"
+description = "Where the data of notenwart lives: PostgreSQL and the object store"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+notenwart-core = { workspace = true, features = ["sqlx"] }
+anyhow.workspace = true
+object_store.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

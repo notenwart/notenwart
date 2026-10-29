@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+[package]
+name = "notenwart-api"
+description = "The open API of notenwart: HTTP and JSON, and the embedded web app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+notenwart-app.workspace = true
+axum.workspace = true
+axum-extra.workspace = true
+mime_guess.workspace = true
+percent-encoding.workspace = true
+rust-embed.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+tokio.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+notenwart-store.workspace = true
+base64.workspace = true
+futures-util.workspace = true
+http-body-util.workspace = true
+lopdf.workspace = true
+object_store.workspace = true
+reqwest.workspace = true
+sqlx.workspace = true
+tower.workspace = true
+
+[lints]
+workspace = true

@@ -12,16 +12,17 @@ RUN cd web && pnpm build
 
 FROM rust:1-bookworm AS server
 WORKDIR /src
-COPY Cargo.toml Cargo.lock ./
+# rust-toolchain.toml pins the toolchain; rustup in the image fetches it.
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY .sqlx .sqlx
-COPY server server
+COPY crates crates
 # Queries are checked against .sqlx (`cargo sqlx prepare --workspace -- --all-targets`), not a live database.
 ENV SQLX_OFFLINE=true
 COPY --from=web /src/web/build web/build
 RUN cargo build --release --locked
 
 FROM debian:bookworm-slim
-# poppler-utils and tesseract read the text of sheet music (recognize.rs).
+# poppler-utils and tesseract read the text of sheet music (crates/notenwart-app/src/recognize.rs).
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
         poppler-utils tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/* \

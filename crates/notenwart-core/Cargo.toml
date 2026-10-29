@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+[package]
+name = "notenwart-core"
+description = "The domain of notenwart: its types and rules, without I/O"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[features]
+# The domain's types as PostgreSQL stores them (for notenwart-store and notenwart-app).
+sqlx = ["dep:sqlx"]
+
+[dependencies]
+lopdf.workspace = true
+serde.workspace = true
+sqlx = { workspace = true, optional = true }
+thiserror.workspace = true
+
+[lints]
+workspace = true
