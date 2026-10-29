@@ -11,6 +11,7 @@ export const de: Record<string, string> = {
 	'Sign out': 'Abmelden',
 	'Loading…': 'Wird geladen …',
 	'Opening…': 'Wird geöffnet …',
+	'Page not found': 'Seite nicht gefunden',
 	Save: 'Speichern',
 	'Saved.': 'Gespeichert.',
 	Cancel: 'Abbrechen',

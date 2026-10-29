@@ -4,7 +4,7 @@
 	start time – when each item begins. Leaders reorder by dragging (or the arrows), add breaks and notes.
 -->
 <script lang="ts">
-	import { resolve } from '$app/paths';
+	import { resolve } from '#lib/router.svelte.js';
 	import {
 		api,
 		message,
