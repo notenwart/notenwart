@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Licence and copyright of files that cannot carry a header (REUSE specification 3.3). Source files name their own
+# licence in an SPDX header.
+version = 1
+
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "falkOSS – Falcon Lake Open Source Software gUG (haftungsbeschränkt) i. G. and the notenwart contributors"
+
+# Generated, JSON and configuration files of the server and the web app, and the repository's own notes.
+[[annotations]]
+path = ["README.md", "CLAUDE.md", "CHANGELOG.md", "CONTRIBUTING.md", "**/.gitignore", ".dockerignore", ".env.example",
+  "Cargo.lock", ".sqlx/**", "web/package.json", "web/pnpm-lock.yaml", "web/tsconfig.json", "web/**/tsconfig.json",
+  "web/.npmrc", "web/.prettierignore", "web/.vscode/**", "web/src/lib/api/schema.d.ts", "web/src/lib/api-types.ts",
+  "web/public/robots.txt", "web/static/robots.txt"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "falkOSS – Falcon Lake Open Source Software gUG (haftungsbeschränkt) i. G. and the notenwart contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# The API description, MIT so that clients under any licence can be generated from it.
+[[annotations]]
+path = "api/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "falkOSS – Falcon Lake Open Source Software gUG (haftungsbeschränkt) i. G. and the notenwart contributors"
+SPDX-License-Identifier = "MIT"
+
+# The documentation's prose, CC BY 4.0 so that text can move freely between documentation, specification and website.
+[[annotations]]
+path = "docs/**/*.md"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "falkOSS – Falcon Lake Open Source Software gUG (haftungsbeschränkt) i. G. and the notenwart contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# Copies of the artwork from notenwart/brand – kept as they are, under its licence.
+[[annotations]]
+path = ["docs/assets/**", "web/public/favicon.*", "web/public/apple-touch-icon.png", "web/public/icon-*.png",
+  "web/public/notenwart-mark-*.svg", "web/public/site.webmanifest", "web/static/favicon.*",
+  "web/static/apple-touch-icon.png", "web/static/icon-*.png", "web/static/mark-*.svg", "web/static/manifest.webmanifest"]
+precedence = "override"
+SPDX-FileCopyrightText = "falkOSS – Falcon Lake Open Source Software gUG (haftungsbeschränkt) i. G."
+SPDX-License-Identifier = "CC-BY-ND-4.0"

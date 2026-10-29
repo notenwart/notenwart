@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# notenwart.dev – the documentation, built by GitHub Pages from this folder (Jekyll, Just the Docs): the user guide
-# in English and German, running a server, the API, contributing, design and changelog.
+# notenwart.dev – the documentation, built from this folder with Jekyll and the remote theme Just the Docs by
+# .github/workflows/pages.yml (GitHub Actions, not a branch): the user guide in English and German, running a server,
+# the API, contributing, design and changelog. The files in assets/ are copies from notenwart/brand.
 title: notenwart
 description: Documentation – a self-hosted sheet music library for music schools, orchestras and ensembles
 url: https://notenwart.dev
@@ -11,6 +12,7 @@ plugins:
   - jekyll-remote-theme
 
 color_scheme: notenwart
+logo: /assets/notenwart-lockup-on-light.svg
 favicon_ico: /assets/favicon.ico
 search_enabled: true
 heading_anchors: true
@@ -29,7 +31,7 @@ gh_edit_branch: main
 gh_edit_source: docs
 gh_edit_view_mode: edit
 
-footer_content: "notenwart is free software under AGPL-3.0-or-later – a falkOSS project."
+footer_content: "notenwart is free software under AGPL-3.0-or-later; this documentation is under CC BY 4.0 – a <a href=\"https://falkoss.org\">falkOSS</a> project. <a href=\"https://falkoss.org/impressum.html\">Imprint</a> · <a href=\"https://falkoss.org/datenschutz.html\">Privacy</a>"
 
 # Every page uses the theme's layout (GitHub Pages would default to it as well; a local build does not)
 defaults:
