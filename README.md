@@ -79,6 +79,17 @@ cargo sqlx prepare --workspace -- --all-targets
 Tests: `cargo test` (needs the dev database; every test gets its own) and `pnpm --dir web test`. Dependencies:
 `cargo deny check`, and `scripts/check-age.py` after changing `Cargo.lock` (each crate at least two weeks old).
 
+## The name
+
+```
+NOTEN + WART → notenwart
+```
+
+*Noten* is German for sheet music, and a *Wart* is a keeper – as in *Torwart*, the goalkeeper. In German orchestras and
+bands the *Notenwart* is the member who looks after the sheet music: keeps the library, hands out the parts and
+collects them again. Few people outside music know the word, and even inside the job happens in the background – until
+a part is missing. notenwart does that job, so that every player finds their part on the stand. Say *NOH-ten-vart*.
+
 ## Licence
 
 notenwart is free software under the [GNU AGPL-3.0-or-later](LICENSE). The API specification in `api/` is under the
