@@ -13,6 +13,8 @@ that section into the version's.
   (search, invite, role, delete), ensembles and works – with keyboard and mouse.
 - Scans with JPEG 2000 or JBIG2 images show their pages: pdf.js gets its image decoders, standard fonts and
   character maps from the app itself (also offline).
+- Parts show on older browsers too: pdf.js is loaded as its legacy build, which brings polyfills for newer JavaScript
+  functions. Before, the viewer stayed black where one was missing (for example Firefox 139 on an e-ink tablet).
 
 ## [0.1.0] – 2026-10-29
 
