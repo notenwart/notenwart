@@ -4,10 +4,13 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 let library: Promise<typeof import('pdfjs-dist')> | undefined;
 
+// The legacy build, not the modern one: it brings polyfills for newer JavaScript functions (for example
+// `Map.prototype.getOrInsertComputed`) that browsers a year or two old lack – the modern build fails in `page.render`
+// there, and the viewer stays black (seen on Firefox 139 on an e-ink tablet). It also keeps older Android WebViews working.
 function pdfjs() {
 	library ??= Promise.all([
-		import('pdfjs-dist'),
-		import('pdfjs-dist/build/pdf.worker.min.mjs?url')
+		import('pdfjs-dist/legacy/build/pdf.mjs'),
+		import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')
 	]).then(([pdfjs, worker]) => {
 		pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
 		return pdfjs;
